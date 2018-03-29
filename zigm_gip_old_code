@@ -1,0 +1,142 @@
+! date: 03/20/07
+! purpose: 
+!04/10/07: notes from discussion with Astrid 
+! zigm11 etc values polarward of crit(1/2) (that is heelis coverage) are not important, but should not be zero
+! equatorial assumption is valid as it is.
+! sinI, wind directions: need extensive validation!!!
+
+
+
+      module zigm_gip_module
+
+!nm120908: use IONOSPHERE_PLASMASPHERE,only:NLP
+use params_module,only:nmlonp1, & ! nmlon+1
+     &  nmlat   ! number of geomagnetic grid latitudes
+implicit none
+
+      real,dimension(nmlonp1,nmlat),public :: &
+     &  zigm11_gip, & ! sigma11*cos(theta0)
+     &  zigmc_gip,  & ! sigmac
+     &  zigm2_gip,  & ! sigma2
+     &  zigm22_gip    ! sigma22/cos(theta0)
+!
+! rim(1)=id(1), rim(2)=id(2)/cos(theta0)
+      real,dimension(nmlonp1,nmlat,2),public :: rim_gip 
+
+private
+public :: get_zigm_from_gip
+
+contains
+subroutine get_zigm_from_gip ()
+
+      use dynamo_module,only:zigm11,zigm22,zigmc,zigm2,rim
+      use read_module,only:zigm11_readin,zigmc_readin,zigm2_readin,zigm22_readin,rim_readin
+implicit none
+
+    INTEGER,parameter :: N_dynamo_lats = nmlat  != 97
+    INTEGER :: ilat_dySH , ilat_dyNH
+    INTEGER :: i,j
+!nm060908: test 3
+    INTEGER :: L,k
+
+
+! update with gip output
+        zigm11(1:nmlonp1,1:nmlat)     = zigm11_gip(1:nmlonp1,1:nmlat)
+        zigm22(1:nmlonp1,1:nmlat)     = zigm22_gip(1:nmlonp1,1:nmlat)
+         zigmc(1:nmlonp1,1:nmlat)     =  zigmc_gip(1:nmlonp1,1:nmlat)
+         zigm2(1:nmlonp1,1:nmlat)     =  zigm2_gip(1:nmlonp1,1:nmlat)
+           rim(1:nmlonp1,1:nmlat,1:2) =    rim_gip(1:nmlonp1,1:nmlat,1:2)
+
+
+
+
+
+!nm041007: assign arbitary values at high latitude within Heelis coverage
+! test (1) from gip2dynamo.F -->run33
+! am 10/04 set high latitude values since these are no calculated
+! in the plasmasphere model region of Heelis pattern
+! value itself should not matter since potential is prescribed 
+!dbg041007:        zigm11(1:nmlonp1,1:ilat_dySH-1) = 0.01
+!dbg041007:        zigm22(1:nmlonp1,1:ilat_dySH-1) = 0.01
+!dbg041007:! conjugate point
+!dbg041007:        zigm11(1:nmlonp1,ilat_dyNH+1:nmlat) = 0.01
+!dbg041007:        zigm22(1:nmlonp1,ilat_dyNH+1:nmlat) = 0.01
+!dbg041007:! test to fix high value at 0 and 180 deg longitude
+!dbg041007:        rim(:,1:ilat_dySH-1    ,2) = 0
+!dbg041007:        rim(:,ilat_dyNH+1:nmlat,2) = 0
+
+
+! test (2) from netcdf readin values -->run34
+! get the highest latitude in _plasma: from SUB-convert_integral_to_dynamo_grid
+!lp = 1  
+!lp_from_every_second_tube = 1
+!SH: highest lat
+!ilat_dySH =83 ((N_dynamo_lats - 1) / 2) - ((NLP + 1) / 2) + 1 !=lp_from_every_second_tube
+!SH: highest lat
+!ilat_dyNH =15 ((N_dynamo_lats + 1) / 2) + ((NLP + 1) / 2)     !- lp_from_every_second_tube + 1
+!print *,'sub-get_zigm_from_gip', ilat_dySH,ilat_dyNH
+!nm060908: ilat_dySH=15
+!nm060908: ilat_dyNH=83
+!nm060908: !SH: 1-14
+!nm060908: zigm11(1:nmlonp1,1:ilat_dySH-1)      =zigm11_readin(1:nmlonp1,1:ilat_dySH-1)
+!nm060908: zigm22(1:nmlonp1,1:ilat_dySH-1)      =zigm22_readin(1:nmlonp1,1:ilat_dySH-1)
+!nm060908:  zigmc(1:nmlonp1,1:ilat_dySH-1)      = zigmc_readin(1:nmlonp1,1:ilat_dySH-1)
+!nm060908:  zigm2(1:nmlonp1,1:ilat_dySH-1)      = zigm2_readin(1:nmlonp1,1:ilat_dySH-1)
+!nm060908:    rim(1:nmlonp1,1:ilat_dySH-1,1:2)  =   rim_readin(1:nmlonp1,1:ilat_dySH-1,1:2)
+!nm060908:
+!nm060908:!NH: 84-97
+!nm060908: zigm11(1:nmlonp1,ilat_dyNH+1:nmlat)      =zigm11_readin(1:nmlonp1,ilat_dyNH+1:nmlat)
+!nm060908: zigm22(1:nmlonp1,ilat_dyNH+1:nmlat)      =zigm22_readin(1:nmlonp1,ilat_dyNH+1:nmlat)
+!nm060908:  zigmc(1:nmlonp1,ilat_dyNH+1:nmlat)      = zigmc_readin(1:nmlonp1,ilat_dyNH+1:nmlat)
+!nm060908:  zigm2(1:nmlonp1,ilat_dyNH+1:nmlat)      = zigm2_readin(1:nmlonp1,ilat_dyNH+1:nmlat)
+!nm060908:    rim(1:nmlonp1,ilat_dyNH+1:nmlat,1:2)  =   rim_readin(1:nmlonp1,ilat_dyNH+1:nmlat,1:2)
+!nm060908:!test2 end
+!nm060908:
+!nm060908: test (3) from minimum gradient at the boundary -->run47
+ilat_dySH=15
+ilat_dyNH=83
+
+!SH: 1-14<--15
+ L_loop: do L=1,nmlonp1
+ zigm11(L,1:ilat_dySH-1)      =zigm11(L,ilat_dySH)
+ zigm22(L,1:ilat_dySH-1)      =zigm22(L,ilat_dySH)
+  zigmc(L,1:ilat_dySH-1)      = zigmc(L,ilat_dySH)
+  zigm2(L,1:ilat_dySH-1)      = zigm2(L,ilat_dySH)
+    k_loopSH: do k=1,2
+    rim(L,1:ilat_dySH-1,k)  =     rim(L,ilat_dySH,k)
+    enddo k_loopSH 
+
+!NH: 84-97<--83
+ zigm11(L,ilat_dyNH+1:nmlat)      =zigm11(L,ilat_dyNH)
+ zigm22(L,ilat_dyNH+1:nmlat)      =zigm22(L,ilat_dyNH)
+  zigmc(L,ilat_dyNH+1:nmlat)      = zigmc(L,ilat_dyNH)
+  zigm2(L,ilat_dyNH+1:nmlat)      = zigm2(L,ilat_dyNH)
+    k_loopNH: do k=1,2
+    rim(L,ilat_dyNH+1:nmlat,k)  =   rim(L,ilat_dyNH,k)
+    enddo k_loopNH
+ enddo L_loop !: do L=1,nmlonp1
+!nm060908:!test3 end
+
+
+!nm041007: confirmed with gip2dynamo.F 
+! am 10/04 change sign of K_(m lam)^D in the SH- that's what TIEGCM dynamo expects
+      do j = 1,(nmlat+1)/2  !=49:  SP--> eq
+        rim(1:nmlonp1,j,2) = -rim(1:nmlonp1,j,2)
+      enddo
+
+!nm032007: extracted from readin.F : sub- readin_ascii
+! am 10/04 so far no value at the equator
+!nm041007: this assumption is valid! confirmed with gip2dynamo.F gip_tiegcm version
+
+      j = (nmlat+1)/2   !=nmlath: index to magnetic equator
+      do i = 1,nmlonp1
+         zigm11(i,j)   = .125*(zigm11(i,j-1)+ zigm11(i,j+1))
+         zigm22(i,j)   = .125*(zigm22(i,j-1)+ zigm22(i,j+1))
+         zigmc(i,j)   = .125*( zigmc(i,j-1) + zigmc(i,j+1))
+         zigm2(i,j)   = .06 *( zigm2(i,j-1) + zigm2(i,j+1))
+         rim(i,j,1) = .06 *(   rim(i,j-1,1) + rim(i,j+1,1))
+         rim(i,j,2) = .06 *(   rim(i,j-1,2) + rim(i,j+1,2))
+      enddo ! i = 1,nmlon
+
+      end subroutine get_zigm_from_gip
+      end module zigm_gip_module

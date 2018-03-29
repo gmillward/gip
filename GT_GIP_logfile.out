@@ -1,0 +1,652 @@
+Execute poe command line: poe  ./gt_gip_model
+  mag lats           16          86   88.0000000000000     
+  mag lats           16          87   88.9000000000000     
+  mag lats           16          88   87.9100000000000     
+  mag lats           17          86   87.5000000000000     
+  mag lats           17          87   88.4300000000000     
+  mag lats           17          88   87.7900000000000     
+       F10.7 . . . . . . . . . . . . . 120.
+  
+     
+             INPUT DATA SET      
+ data/GT_RESTART_20180217_0300                                                  
+                      
+     
+             OUTPUT DATA SET     
+ data/GT_RESTART                                                                
+                      
+
+write_hist: Created netcdf graphics file data/GT_RESTART.graphics.nc
+
+read_hist: Opened file data/GT_RESTART_20180217_0300 for reading.
+Completed read of file data/GT_RESTART_20180217_0300
+ UT_previous_call_GT_secs    10800.0000000000     
+ ***************** HYDROGEN GRID AT 400KM ***********************************
+ 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7 0.7
+ 0.8 0.8 0.8 0.8 0.8 0.8 0.7 0.7 0.7 0.6 0.6 0.6 0.6 0.6 0.6 0.6 0.6 0.6 0.7 0.7 0.7 0.8 0.8 0.8 0.8
+ 1.1 1.1 1.1 1.1 1.0 0.9 0.9 0.8 0.7 0.7 0.7 0.6 0.6 0.6 0.6 0.6 0.7 0.7 0.7 0.8 0.9 0.9 1.0 1.1 1.1
+ 1.4 1.4 1.4 1.3 1.3 1.2 1.1 1.0 0.9 0.9 0.8 0.8 0.7 0.7 0.7 0.7 0.8 0.8 0.9 1.0 1.0 1.1 1.2 1.3 1.4
+ 1.6 1.6 1.6 1.6 1.5 1.5 1.4 1.3 1.2 1.1 1.1 1.0 0.9 0.9 0.9 0.9 0.9 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6
+ 1.7 1.8 1.8 1.8 1.8 1.7 1.6 1.5 1.4 1.3 1.3 1.2 1.1 1.1 1.0 1.0 1.0 1.0 1.0 1.1 1.2 1.4 1.5 1.6 1.7
+ 1.8 1.9 2.0 2.0 1.9 1.9 1.7 1.6 1.5 1.4 1.4 1.3 1.2 1.1 1.0 1.0 0.9 1.0 1.0 1.1 1.2 1.4 1.5 1.7 1.8
+ 1.8 2.0 2.0 2.1 2.0 1.9 1.8 1.7 1.5 1.4 1.4 1.3 1.2 1.1 1.0 0.9 0.9 0.9 1.0 1.1 1.2 1.4 1.5 1.7 1.8
+ 1.8 1.9 2.0 2.1 2.0 2.0 1.8 1.7 1.6 1.5 1.4 1.3 1.2 1.1 1.0 0.9 0.8 0.9 0.9 1.0 1.2 1.3 1.5 1.7 1.8
+ 1.8 1.9 2.0 2.1 2.1 2.0 1.9 1.8 1.6 1.5 1.4 1.3 1.2 1.1 0.9 0.9 0.8 0.8 0.9 1.0 1.2 1.3 1.5 1.6 1.8
+ 1.8 2.0 2.1 2.2 2.2 2.1 2.0 1.9 1.7 1.6 1.5 1.3 1.2 1.1 0.9 0.9 0.8 0.9 0.9 1.0 1.2 1.3 1.5 1.7 1.8
+ 1.9 2.1 2.3 2.4 2.4 2.3 2.2 2.0 1.9 1.7 1.5 1.3 1.2 1.0 0.9 0.9 0.8 0.8 0.9 1.0 1.2 1.4 1.5 1.7 1.9
+ 2.1 2.4 2.6 2.7 2.7 2.6 2.4 2.2 1.9 1.7 1.5 1.3 1.1 1.0 0.9 0.8 0.8 0.8 0.9 1.0 1.2 1.4 1.6 1.9 2.1
+ 2.2 2.4 2.7 2.8 2.8 2.7 2.5 2.2 1.9 1.7 1.5 1.3 1.1 1.0 0.9 0.8 0.8 0.8 0.9 1.0 1.2 1.4 1.6 1.9 2.2
+ 2.0 2.2 2.4 2.6 2.6 2.5 2.3 2.1 1.9 1.7 1.5 1.3 1.1 1.0 0.9 0.9 0.8 0.8 0.9 1.0 1.1 1.3 1.5 1.7 2.0
+ 1.7 1.9 2.0 2.1 2.2 2.2 2.1 2.0 1.8 1.7 1.5 1.4 1.2 1.1 1.0 1.0 0.9 0.9 0.9 1.0 1.1 1.2 1.3 1.5 1.7
+ 1.5 1.6 1.7 1.8 1.8 1.8 1.8 1.8 1.7 1.6 1.5 1.4 1.3 1.3 1.2 1.1 1.1 1.0 1.0 1.1 1.1 1.2 1.2 1.3 1.5
+ 1.3 1.4 1.4 1.5 1.5 1.6 1.6 1.6 1.5 1.5 1.5 1.4 1.4 1.3 1.3 1.2 1.2 1.2 1.2 1.2 1.2 1.2 1.3 1.3 1.3
+ 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3 1.3
+ ****************************************************************************
+ !dbg! init_cons: crit1=  0.523598775000000        60.0000000342800     
+ !dbg! init_cons: crit2=  0.610865240000000        54.9999998967539     
+ **************** GIP INITIALISATION CALL ******************* 
+ ******** reading GIP startup file ********
+
+read_hist: Opened file data/GIP_RESTART_20180217_0300 for reading.
+Completed read of file data/GIP_RESTART_20180217_0300
+ ******** finished reading GIP startup file ********
+ ******* Reading in APEX mag field parameters for GIP *******
+ 5
+ 4
+ 3
+ 2
+ 1
+ ....and all the interpolation indices
+ Blast Off
+ ******* Finished reading in APEX mag field parameters for GIP *******
+  
+       **********************************
+       *                                *
+       *           OK here goes ......  *
+       *                                *
+       **********************************
+  
+ nnloop=             1
+ Universal_Time =    3.01666666666667        10860.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0301                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0301
+ nnloop=             2
+ Universal_Time =    3.03333333333333        10920.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0302                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0302
+ nnloop=             3
+ Universal_Time =    3.05000000000000        10980.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0303                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0303
+ nnloop=             4
+ Universal_Time =    3.06666666666667        11040.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0304                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0304
+ nnloop=             5
+ Universal_Time =    3.08333333333333        11100.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0305                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0305
+ nnloop=             6
+ Universal_Time =    3.10000000000000        11160.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0306                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0306
+ nnloop=             7
+ Universal_Time =    3.11666666666667        11220.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0307                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0307
+ nnloop=             8
+ Universal_Time =    3.13333333333333        11280.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0308                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0308
+ nnloop=             9
+ Universal_Time =    3.15000000000000        11340.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0309                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0309
+ nnloop=            10
+ Universal_Time =    3.16666666666667        11400.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0310                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0310
+ nnloop=            11
+ Universal_Time =    3.18333333333333        11460.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0311                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0311
+ nnloop=            12
+ Universal_Time =    3.20000000000000        11520.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0312                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0312
+ nnloop=            13
+ Universal_Time =    3.21666666666667        11580.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0313                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0313
+ nnloop=            14
+ Universal_Time =    3.23333333333333        11640.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0314                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0314
+ nnloop=            15
+ Universal_Time =    3.25000000000000        11700.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0315                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0315
+ NNLOOP , GIP_CALLING           15          15
+ FIRST CALL ????? T
+ !dbg! init_cons: crit1=  0.523598775000000        60.0000000342800     
+ !dbg! init_cons: crit2=  0.610865240000000        54.9999998967539     
+ sub-sunloc: before call cofrm: date=   1999.13187785388     
+ NMLONP1 NMLAT           81          97
+
+write_hist: Created netcdf file data/GIP_RESTART_20180217_0315
+Defined dimensions on file data/GIP_RESTART_20180217_0315
+ MAXVAL    1.20970830067947     
+ nnloop=            16
+ Universal_Time =    3.26666666666667        11760.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0316                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0316
+ nnloop=            17
+ Universal_Time =    3.28333333333333        11820.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0317                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0317
+ nnloop=            18
+ Universal_Time =    3.30000000000000        11880.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0318                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0318
+ nnloop=            19
+ Universal_Time =    3.31666666666667        11940.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0319                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0319
+ nnloop=            20
+ Universal_Time =    3.33333333333333        12000.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0320                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0320
+ nnloop=            21
+ Universal_Time =    3.35000000000000        12060.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0321                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0321
+ nnloop=            22
+ Universal_Time =    3.36666666666667        12120.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0322                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0322
+ nnloop=            23
+ Universal_Time =    3.38333333333333        12180.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0323                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0323
+ nnloop=            24
+ Universal_Time =    3.40000000000000        12240.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0324                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0324
+ nnloop=            25
+ Universal_Time =    3.41666666666667        12300.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0325                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0325
+ nnloop=            26
+ Universal_Time =    3.43333333333333        12360.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0326                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0326
+ nnloop=            27
+ Universal_Time =    3.45000000000000        12420.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0327                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0327
+ nnloop=            28
+ Universal_Time =    3.46666666666667        12480.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0328                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0328
+ nnloop=            29
+ Universal_Time =    3.48333333333333        12540.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0329                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0329
+ nnloop=            30
+ Universal_Time =    3.50000000000000        12600.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0330                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0330
+ NNLOOP , GIP_CALLING           30          15
+ FIRST CALL ????? F
+ NOT FIRST CALL OF PLASMA
+ !dbg! init_cons: crit1=  0.523598775000000        60.0000000342800     
+ !dbg! init_cons: crit2=  0.610865240000000        54.9999998967539     
+ sub-sunloc: before call cofrm: date=   1999.13190639269     
+ NMLONP1 NMLAT           81          97
+
+write_hist: Created netcdf file data/GIP_RESTART_20180217_0330
+Defined dimensions on file data/GIP_RESTART_20180217_0330
+ MAXVAL    1.20386807874036     
+ nnloop=            31
+ Universal_Time =    3.51666666666667        12660.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0331                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0331
+ nnloop=            32
+ Universal_Time =    3.53333333333333        12720.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0332                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0332
+ nnloop=            33
+ Universal_Time =    3.55000000000000        12780.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0333                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0333
+ nnloop=            34
+ Universal_Time =    3.56666666666667        12840.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0334                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0334
+ nnloop=            35
+ Universal_Time =    3.58333333333333        12900.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0335                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0335
+ nnloop=            36
+ Universal_Time =    3.60000000000000        12960.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0336                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0336
+ nnloop=            37
+ Universal_Time =    3.61666666666667        13020.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0337                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0337
+ nnloop=            38
+ Universal_Time =    3.63333333333333        13080.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0338                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0338
+ nnloop=            39
+ Universal_Time =    3.65000000000000        13140.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0339                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0339
+ nnloop=            40
+ Universal_Time =    3.66666666666667        13200.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0340                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0340
+ nnloop=            41
+ Universal_Time =    3.68333333333333        13260.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0341                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0341
+ nnloop=            42
+ Universal_Time =    3.70000000000000        13320.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0342                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0342
+ nnloop=            43
+ Universal_Time =    3.71666666666667        13380.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0343                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0343
+ nnloop=            44
+ Universal_Time =    3.73333333333333        13440.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0344                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0344
+ nnloop=            45
+ Universal_Time =    3.75000000000000        13500.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0345                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0345
+ NNLOOP , GIP_CALLING           45          15
+ FIRST CALL ????? F
+ NOT FIRST CALL OF PLASMA
+ !dbg! init_cons: crit1=  0.523598775000000        60.0000000342800     
+ !dbg! init_cons: crit2=  0.610865240000000        54.9999998967539     
+ sub-sunloc: before call cofrm: date=   1999.13193493151     
+ NMLONP1 NMLAT           81          97
+
+write_hist: Created netcdf file data/GIP_RESTART_20180217_0345
+Defined dimensions on file data/GIP_RESTART_20180217_0345
+ MAXVAL    1.18695069068639     
+ nnloop=            46
+ Universal_Time =    3.76666666666667        13560.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0346                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0346
+ nnloop=            47
+ Universal_Time =    3.78333333333333        13620.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0347                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0347
+ nnloop=            48
+ Universal_Time =    3.80000000000000        13680.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0348                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0348
+ nnloop=            49
+ Universal_Time =    3.81666666666667        13740.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0349                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0349
+ nnloop=            50
+ Universal_Time =    3.83333333333333        13800.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0350                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0350
+ nnloop=            51
+ Universal_Time =    3.85000000000000        13860.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0351                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0351
+ nnloop=            52
+ Universal_Time =    3.86666666666667        13920.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0352                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0352
+ nnloop=            53
+ Universal_Time =    3.88333333333333        13980.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0353                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0353
+ nnloop=            54
+ Universal_Time =    3.90000000000000        14040.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0354                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0354
+ nnloop=            55
+ Universal_Time =    3.91666666666667        14100.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0355                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0355
+ nnloop=            56
+ Universal_Time =    3.93333333333333        14160.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0356                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0356
+ nnloop=            57
+ Universal_Time =    3.95000000000000        14220.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0357                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0357
+ nnloop=            58
+ Universal_Time =    3.96666666666667        14280.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0358                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0358
+ nnloop=            59
+ Universal_Time =    3.98333333333333        14340.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0359                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0359
+ nnloop=            60
+ Universal_Time =    4.00000000000000        14400.0000000000     
+ GT_output_dataset2 
+ data/GT_RESTART_20180217_0400                                                  
+                                                                                
+                                                                                
+                    
+
+write_hist: Created netcdf file data/GT_RESTART_20180217_0400
+ NNLOOP , GIP_CALLING           60          15
+ FIRST CALL ????? F
+ NOT FIRST CALL OF PLASMA
+ !dbg! init_cons: crit1=  0.523598775000000        60.0000000342800     
+ !dbg! init_cons: crit2=  0.610865240000000        54.9999998967539     
+ sub-sunloc: before call cofrm: date=   1999.13196347032     
+ NMLONP1 NMLAT           81          97
+
+write_hist: Created netcdf file data/GIP_RESTART_20180217_0400
+Defined dimensions on file data/GIP_RESTART_20180217_0400
+ MAXVAL    1.18120149075412     
+ *************** NORMAL END ***************
