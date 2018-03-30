@@ -1,5 +1,11 @@
-logfile.out
+GT_GIP_logfile.out
+GT_GIP_input_file
 GT_GIP.std*
+core*
+fort.*
+*.o
+*.mod
+gt_gip_model
 static_files/
 data/
 
