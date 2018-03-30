@@ -3,9 +3,21 @@ UNAMES = $(shell uname -s)
 EXEC = gt_gip_model
 
 FORTRAN=ifort
-FFLAGS= -O3 -r8 -I$(NETCDF)/include
-#FFLAGS_F77=-O3 -r8
-FFLAGS_FIXED= -O3 -r8 -i4
+# optimized
+# #FFLAGS= -O3 -r8 -I$(NETCDF)/include
+# # full debug
+# #FFLAGS= -g -O0 -traceback -warn all -check all -debug all -ftrapuv -fp-model precise -fpp -r8 -I$(NETCDF)/include
+# # traceback debug
+FFLAGS= -g -O0 -traceback -debug all -ftrapuv -fp-model precise -fpp -r8 -I$(NETCDF)/include
+#FFLAGS= -g -O0 -traceback -r8 -I$(NETCDF)/include
+
+# optimized
+# #FFLAGS_FIXED= -O3 -r8 -i4
+# # full debug
+# #FFLAGS_FIXED= -g -O0 -traceback -warn all -check all -debug all -ftrapuv -fp-model precise -fpp -r8 -i4
+# # traceback debug
+FFLAGS_FIXED= -g -O0 -traceback -r8 -i4
+
 LFLAGS=-L. -L$(NETCDF)/lib -lnetcdf
 #
 OBJS =  \
