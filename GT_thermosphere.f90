@@ -1219,36 +1219,48 @@
 !          write(6,*) '*********** smoothing this time step ***********'
 
                   nn_smoothing_counter = 0
+
+             call make_sure_pole_vales_are_defined(neutral_density_3d)
+             call make_sure_pole_vales_are_defined(Wind_southwards_ms1)
+             call make_sure_pole_vales_are_defined(Wind_eastwards_ms1)
+ 
+  !
+  do l = 1 , 20
+  do m = 1 , 91
+  do n = 1 , 15
+  write(278,*) n,m,l,neutral_density_3d(n,m,l),Wind_southwards_ms1(n,m,l),Wind_eastwards_ms1(n,m,l)                               
+  enddo
+  enddo
+  enddo
+ 
+  DO 1805 l = 1 , 20
+    DO 1804 m = 1 , m_North_Pole
+ 
+       CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),rmt(1,m,l),cp)
+ 
+       DO 1802 n = 2 , 15
+         nd = n - 1
+ 
+         Temperature_K(n,m,l) = (-(Wind_southwards_ms1(n,m,l)**2+Wind_eastwards_ms1(n,m,l)**2)/2.0 + eps(n,m,l))/cp(n)                    
+         scht(n) = (GSCON*Temperature_K(n,m,l))  / (rmt(n,m,l)*GRAV)
+ 
+         htt = ht(n,m,l)
+         ndd = n - 2
+         IF ( n.LE.2 ) THEN
+           ht(n,m,l) = ht(nd,m,l) + scht(nd)
+         ELSE
+           ht(n,m,l) = ht(nd,m,l) + scht(nd) + (scht(n)-scht(ndd))/4.0 + (scht(n)+scht(ndd)-2.0*scht(nd))/6.0                    
+         ENDIF
+         wvz(n,m,l) = (ht(n,m,l)-htt) /GT_time_step_seconds - om1(n,m,l)/neutral_density_3d(n,m,l)/GRAV                       
+ 
+   1802                   CONTINUE  ! HEIGHT (PRESSURE)
+ 
+         wvz(1,m,l) = (ht(1,m,l)-htold(m,l))/GT_time_step_seconds - om1(1,m,l)/neutral_density_3d(1,m,l)/GRAV                        
+         IF (m.GT.84.OR.m.LT.8) wvz(1,m,l)=0.
+ 
+   1804                CONTINUE  ! LATITUDE
+   1805             CONTINUE     ! LONGITUDE
 !
-                  DO 1805 l = 1 , 20
-                     DO 1804 m = 1 , m_North_Pole
-
-        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),rmt(1,m,l),cp)
-
-                        DO 1802 n = 2 , 15
-                           nd = n - 1
-                           Temperature_K(n,m,l) = (-(Wind_southwards_ms1(n,m,l)**2+Wind_eastwards_ms1(n,m,l)**2)/ &
-                                        2.0+eps(n,m,l))/cp(n)
-                           scht(n) = (GSCON*Temperature_K(n,m,l)) &
-                                     /(rmt(n,m,l)*GRAV)
-                           htt = ht(n,m,l)
-                           ndd = n - 2
-                           IF ( n.LE.2 ) THEN
-                              ht(n,m,l) = ht(nd,m,l) + scht(nd)
-                           ELSE
-                              ht(n,m,l) = ht(nd,m,l) + scht(nd) &
-                                 + (scht(n)-scht(ndd)) &
-                                 /4.0 + (scht(n)+scht(ndd)-2.0*scht(nd)) &
-                                 /6.0
-                           ENDIF
-                           wvz(n,m,l) = (ht(n,m,l)-htt) &
-                                        /GT_time_step_seconds - om1(n,m,l)/neutral_density_3d(n,m,l)/GRAV
- 1802                   CONTINUE
-                  wvz(1,m,l) = (ht(1,m,l)-htold(m,l))/GT_time_step_seconds - &
-                                om1(1,m,l)/neutral_density_3d(1,m,l)/GRAV
-                  IF (m.GT.84.OR.m.LT.8) wvz(1,m,l)=0.
- 1804                CONTINUE
- 1805             CONTINUE
                   j = m_North_Pole
                   nmin = 2
                   nmax = 15
@@ -4561,6 +4573,45 @@
       END SUBROUTINE Smooth_VnY_in_Y
 
 
+SUBROUTINE make_sure_pole_vales_are_defined(param)
+ 
+        IMPLICIT NONE
+        INTEGER :: n , m , l
+        REAL*8 param(15,91,20) , pole_value
+ 
+  ! south pole.....
+        do n = 1 , 15
+        pole_value = 0.0
+ 
+        do l = 1 , 20
+        pole_value = pole_value + param(n,3,l)
+        enddo
+        pole_value = pole_value / 20.0
+ 
+        do l = 1 , 20
+        param(n,1,l) = pole_value
+        param(n,2,l) = (param(n,1,l) + param(n,3,l))/2.0
+        enddo
+ 
+        enddo !n
+ 
+  ! north pole.....
+        do n = 1 , 15
+        pole_value = 0.0
+ 
+        do l = 1 , 20
+        pole_value = pole_value + param(n,89,l)
+        enddo
+        pole_value = pole_value / 20.0
+ 
+        do l = 1 , 20
+        param(n,91,l) = pole_value
+        param(n,90,l) = (param(n,91,l) + param(n,89,l))/2.0
+        enddo
+ 
+        enddo !n
+ 
+  END SUBROUTINE make_sure_pole_vales_are_defined
 
 
 
