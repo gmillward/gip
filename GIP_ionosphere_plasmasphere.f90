@@ -1,5 +1,77 @@
-MODULE IONOSPHERE_PLASMASPHERE
+module module_hl__calculate_points_along_the_tube
 
+  IMPLICIT NONE
+  REAL(kind=8) :: &
+  diff , Height_diff(90) , Height_diff2(90) , H2Diff(90) , hi , hi1 , HPRod2(90) , HPRod3(90) , prod , &
+  re , TARea(90) , TOPht , x , z(90) , ZKM(90)
+  INTEGER :: i , NSTeps , nhgt
+  parameter (re = 6371.)
+  parameter (topht = 10000.)
+  parameter (nhgt = 86)
+
+  private i , x , diff , hi , hi1 , prod , topht , nsteps
+  public :: hl__calculate_points_along_the_tube
+
+contains
+
+SUBROUTINE hl__calculate_points_along_the_tube
+
+! this routine sets up the heightsteps along a plasma tube(presumed
+! straight).as r=1,2,....,nsteps,we have the following:
+! zkm(r)=f(r)
+! z(r)=(zkm(r)+re)*1000.
+! h(r)=z(r+1)-z(r)
+! h2(r)=h(r)*h(r)
+! h2diff(r)=h2(r+1)-h2(r)
+! hprod2(r)=h(r)*h(r+1)
+! hprod3(r)=h(r)*h(r+1)*(h(r)+h(r+1))
+
+! all functions of h are passed in common blocks.
+
+! set lower height
+
+  ZKM(1) = 100.
+  z(1) = (ZKM(1)+re)*1.E3
+
+  DO 100 i = 1 , 57
+  !c       x=zkm(i) + 5.*exp(0.0036*(zkm(i)-100.))
+      x = ZKM(i) + 5.*EXP(0.0036*(ZKM(i)-100.))
+      IF ( x > TOPht ) GOTO 200
+      ZKM(i+1) = x
+      z(i+1) = (x+re)*1.E3
+  100 ENDDO
+  200 DO 300 i = 59 , 90
+      x = ZKM(i-1) + 300.
+      IF ( x > TOPht ) GOTO 400
+      ZKM(i) = x
+      z(i) = (x+re)*1.E3
+  300 ENDDO
+  400 NSTeps = i - 1
+
+  DO 500 i = 1 , NSTeps - 1
+      TARea(i) = (z(i+1)/z(i))**3
+  500 ENDDO
+  DO 600 i = 1 , NSTeps - 1
+      diff = z(i+1) - z(i)
+      Height_diff(i) = diff
+      Height_diff2(i) = diff*diff
+  600 ENDDO
+  DO 700 i = 1 , NSTeps - 2
+      H2Diff(i) = Height_diff2(i+1) - Height_diff2(i)
+      hi = Height_diff(i)
+      hi1 = Height_diff(i+1)
+      prod = hi*hi1
+      HPRod2(i) = prod
+      HPRod3(i) = prod*(hi+hi1)
+  700 ENDDO
+  RETURN
+
+end SUBROUTINE hl__calculate_points_along_the_tube
+
+end module module_hl__calculate_points_along_the_tube
+
+
+MODULE IONOSPHERE_PLASMASPHERE
   use cons_module
   use dynamo_module
   use heelis_module
@@ -10,9 +82,13 @@ MODULE IONOSPHERE_PLASMASPHERE
 
   PUBLIC :: GIP_init
   PUBLIC :: GIP_calculation
-  PRIVATE
+! public :: HL__calculate_points_along_the_tube
+  public :: HL__POLAR_IONOSPHERE
+  
+!  PRIVATE
+  PUBLIC
 
-  SAVE
+!  SAVE
 
   INTEGER NPTS
   INTEGER NMP
@@ -85,9 +161,8 @@ MODULE IONOSPHERE_PLASMASPHERE
   REAL(kind=8) km_plasma(6)
   REAL(kind=8) r0
   REAL(kind=8) zkm(90)
-  REAL(kind=8) hnew(90) , h2(90) , h2diff(90) , hprod2(90) , hprod3(90)
+  REAL(kind=8) height_diff(90) , height_diff2(90) , h2diff(90) , hprod2(90) , hprod3(90)
   REAL(kind=8) hz_metres(90)
-  REAL(kind=8) tarea(90)
   REAL(kind=8) dth_radians
   REAL(kind=8) gravity(90)
   REAL(kind=8) btotal(91,20)
@@ -1100,8 +1175,8 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
       high_lat_time_step_seconds, &
       angdif, &
       btotal,dip_angle_radians,f107,hprof,dth_radians, &
-      ex2d,ey2d,v13d,v23d,tarea,d13d,d23d, &
-      gravity,nhgt,hz_metres,hnew,h2,h2diff,hprod2,hprod3,zkm,l300,l1000,r0,declination, &
+      ex2d,ey2d,v13d,v23d,d13d,d23d, &
+      gravity,hz_metres,l300,l1000,r0,declination, &
       Solar_Declination_Angle_degrees,km_plasma,universal_time_seconds, &
       ioutput_counter,ioutput_high_res_counter, &
       ioutput_frequency_mins,ioutput_high_res_frequency_mins, &
@@ -5638,8 +5713,8 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
   high_lat_time_step_seconds, &
   angdif, &
   btotal,dip_angle_radians,f107,hprof,dth_radians, &
-  ex2d,ey2d,v13d,v23d,tarea,d13d,d23d, &
-  gravity,nhgt,hz_metres,hnew,h2,h2diff,hprod2,hprod3,zkm,l300,l1000,r0,declination, &
+  ex2d,ey2d,v13d,v23d,d13d,d23d, &
+  gravity,hz_metres,l300,l1000,r0,declination, &
   Solar_Declination_Angle_degrees,km_plasma,universal_time_seconds, &
   ioutput_counter,ioutput_high_res_counter, &
   ioutput_frequency_mins,ioutput_high_res_frequency_mins, &
@@ -5658,6 +5733,12 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
   O2plus_density_fixed_ht,N2plus_density_fixed_ht,Nplus_density_fixed_ht, &
   Te_fixed_ht,Ti1_fixed_ht,Ti2_fixed_ht,iday_number)
 !g
+
+  use :: module_hl__calculate_points_along_the_tube, only: &
+         Height_diff , Height_diff2 , H2Diff , HPRod2 , &
+         HPRod3 , re , TARea , z , ZKM , nhgt, &
+         hl__calculate_points_along_the_tube
+
   IMPLICIT NONE
 
     INTEGER N_Pressure_Levels,N_Latitudes,N_longitudes
@@ -5672,7 +5753,6 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
   INTEGER :: n
   INTEGER :: iday_number
   INTEGER :: ihemi
-  INTEGER :: nhgt
   INTEGER :: l300
   INTEGER :: l1000
   INTEGER :: istop
@@ -5728,15 +5808,8 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
   REAL(kind=8) d23d(90,N_Latitudes,N_longitudes,2)
   REAL(kind=8) v13d(90,N_Latitudes,N_longitudes,2)
   REAL(kind=8) v23d(90,N_Latitudes,N_longitudes,2)
-  REAL(kind=8) tarea(90)
   REAL(kind=8) gravity(90)
   REAL(kind=8) hz_metres(90)
-  REAL(kind=8) h2(90)
-  REAL(kind=8) h2diff(90)
-  REAL(kind=8) hnew(90)
-  REAL(kind=8) hprod2(90)
-  REAL(kind=8) hprod3(90)
-  REAL(kind=8) zkm(90)
   REAL(kind=8) r0
   REAL(kind=8) r0_km
   REAL(kind=8) g0
@@ -5744,7 +5817,6 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
   REAL(kind=8) solar_declination_angle_degrees
   REAL(kind=8) km_plasma(6)
   REAL(kind=8) universal_time_seconds
-  REAL(kind=8) topht
   REAL(kind=8) height_in
   REAL(kind=8) georat
   REAL(kind=8) geo_grid_longitudes_degrees(N_longitudes)
@@ -5851,6 +5923,7 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
   REAL(kind=8) altitude_metres(90)
 
   PARAMETER (PI=3.14159,DTR=PI/180.0)
+  PARAMETER (r0_km=6371.,g0=9.81)
 !g
   data mlow /14,16,18,20,22,24,25,25,23,21,20,17,15,13,12,12,12,12,12,13/
   data mhigh /75,75,75,76,76,76,76,76,76,76,76,75,74,73,71,69,70,71,73,74/
@@ -5859,11 +5932,7 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
 
   ! INITIALISATION PART........
 
-      DATA r0_km , g0/6371. , 9.81/
-
-
-      topht = 10000.
-      CALL HL__calculate_points_along_the_tube(topht,NHGt,ZKM,TARea,HNEw,H2,H2Diff,HPRod2,HPRod3)
+      CALL hl__calculate_points_along_the_tube
 
       DO 1001 i = 1 , NHGt
           georat = 1. + ZKM(i)/r0_km
@@ -5929,7 +5998,6 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
 
 
   else  ! else we have a normal call (not initialisation) ....
-
 
   call INTERFACE__FIXED_GEO_to_high_lat_ions ( &
            o_density_fixed_ht,o2_density_fixed_ht,n2_density_fixed_ht, &
@@ -6047,9 +6115,9 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
                   ihemi,f107,hprof,dth_radians, &
                   ti1_1D_output, &
                   ex2d,ey2d, &
-                  v13d,v23d,tarea, &
+                  v13d,v23d, &
                   d13d,d23d,gravity,nhgt,hz_metres, &
-                  coschi,hnew,h2,h2diff,hprod2, &
+                  coschi,height_diff,height_diff2,h2diff,hprod2, &
                   hprod3,zkm,l300,l1000,r0, &
                   geo_grid_longitudes_degrees, &
                   declination,Solar_Declination_Angle_degrees,km_plasma, &
@@ -6228,9 +6296,9 @@ SUBROUTINE HL__HIGH_LAT_IONS( &
   BTH,DIP,CHI, &
   IHEmi,F107,HPRof,dth_radians, &
   TI1_dum, &
-  EX2d,EY2d,V13d,V23d,TARea, &
+  EX2d,EY2d,V13d,V23d, &
   D13d,D23d, &
-  Gravity,NHGt,hz_metres,COSchi,HNEw,H2, &
+  Gravity,NHGt,hz_metres,COSchi,height_diff,Height_diff2, &
   H2Diff,HPRod2,HPRod3,ZKM,L300,L1000, &
   R0, &
   geo_grid_longitudes_degrees, &
@@ -6244,6 +6312,10 @@ SUBROUTINE HL__HIGH_LAT_IONS( &
   Oplus_density_1d,Hplus_density_1d,NOplus_density_1d,O2plus_density_1d, &
   N2plus_density_1d,Nplus_density_1d, &
   Te_1d,Ti1_1d,Ti2_1d,iday_number)
+
+  use :: module_hl__calculate_points_along_the_tube, only: &
+         Height_diff , Height_diff2 , H2Diff , HPRod2 , &
+         HPRod3 , re , TARea , z , ZKM , nhgt
 
   IMPLICIT NONE
 
@@ -6284,14 +6356,14 @@ SUBROUTINE HL__HIGH_LAT_IONS( &
 
   REAL(kind=8) :: &
   rk1 , rk2 , RTD , rteff , rtti(90) , rttin(90) , &
-  sini , SSA , TARea(90) , &
+  sini , SSA , &
   geo_colatitude_radians , thcorr(90)
   REAL(kind=8) :: &
   th_stepped_back_radians , ti , tin , tinlog(90) , topvh , &
   topvo , u2dif , ucos , V13d , V23d , VHTOP
   REAL(kind=8) :: vi , vix(90) , viy(90) , viz(90) , vrsini ,  &
   ZKM(90)
-  REAL(kind=8) :: HNEw(90) , H2(90) , H2Diff(90) , HPRod2(90) , HPRod3(90)
+  REAL(kind=8) :: height_diff(90) , Height_diff2(90) , H2Diff(90) , HPRod2(90) , HPRod3(90)
   REAL(kind=8) :: AGR , &
   AGT , AGP , R0 , &
   declination , sin_decl , cos_decl ,sdecl , cdecl , &
@@ -6600,16 +6672,15 @@ if (i_diagnose == 1) write(6,*) 'here 10'
   CALL HL__OCOEFF(Oplus_density_1d_back,Hplus_density_1d_back,Hplus_velocity_1d_back,tn_1D,ti1_1d,te_1d,rk1,rk2,vrsini,oa,ob,obeta, &
   total_production_rate_Oplus,hbeta,dte,dti,hprodsub,hbetasub,gsin,cf21,beta2, &
   thcorr,rtti,cf1n,n2_density_1d,o_density_1d,o2_density_1d,atomic_hydrogen_density, &
-  Gravity,NHGt,HNEw, &
-  H2,H2Diff, &
+  Gravity,NHGt,height_diff, &
+  Height_diff2,H2Diff, &
   HPRod3,sini,ucos)
 
-if (i_diagnose == 1) write(6,*) 'here 12'
 !g
   CALL HL__HCOEFF(Hplus_density_1d_back,Oplus_density_1d_back,Oplus_velocity_1d_back,ti2_1d,te_1d,vrsini,ha,hb,hprod,dte,dti,hprodsub, &
   gsin,cf21,beta2,thcorr,rtti,rttin,tinlog,n2_density_1d,o_density_1d, &
   o2_density_1d,atomic_hydrogen_density, &
-  NHGt,HNEw,H2,H2Diff,HPRod3,sini,ucos)
+  NHGt,height_diff,Height_diff2,H2Diff,HPRod3,sini,ucos)
 
 if (i_diagnose == 1) write(6,*) 'here 13'
   topvo = vrsini
@@ -6631,7 +6702,7 @@ if (i_diagnose == 1) write(6,*) 'here 13'
   Oplus_velocity_1d(:) = Oplus_velocity_1d_back(:)
 
   CALL HL__IONCHNG(oa,ob,obeta,total_production_rate_Oplus,Oplus_density_1d,Oplus_velocity_1d, &
-               topvo,high_lat_time_step_seconds,TARea,NHGt,HNEw,H2, &
+               topvo,high_lat_time_step_seconds,TARea,NHGt,height_diff,Height_diff2, &
                HPRod2,sini,i_ion)
 
 if (i_diagnose == 1) write(6,*) 'here 14'
@@ -6657,7 +6728,7 @@ if (i_diagnose == 1) write(6,*) 'here 14'
   !g do the same with the field-aligned velocity to make it consistent
   !g
   ! do l=2,lmaxm
-  ! V1(l) = oA(l) + oB(l)*((D1(l-1)/D1(l))-1.)*SINi/Hnew(l-1)
+  ! V1(l) = oA(l) + oB(l)*((D1(l-1)/D1(l))-1.)*SINi/height_diff(l-1)
   ! enddo
   ENDIF
 
@@ -6669,7 +6740,7 @@ if (i_diagnose == 1) write(6,*) 'here 14'
   Hplus_density_1d(:) = Hplus_density_1d_back(:)
   Hplus_velocity_1d(:) = Hplus_velocity_1d_back(:)
 
-  CALL HL__IONCHNG(ha,hb,hbeta,hprod,Hplus_density_1d,Hplus_velocity_1d,topvh,high_lat_time_step_seconds,TARea,NHGt,HNEw,H2, &
+  CALL HL__IONCHNG(ha,hb,hbeta,hprod,Hplus_density_1d,Hplus_velocity_1d,topvh,high_lat_time_step_seconds,TARea,NHGt,height_diff,Height_diff2, &
   HPRod2,sini,i_ion)
 
   IF ( lmaxm /= 0 ) THEN
@@ -6759,27 +6830,27 @@ end SUBROUTINE HL__TRIDIAG
 
 
 
-SUBROUTINE HL__DIFFARR(ARR,DARr,N,H,H2,H2Diff,HPRod3)
+SUBROUTINE HL__DIFFARR(ARR,DARr,N,Height_diff,Height_diff2,H2Diff,HPRod3)
+
   IMPLICIT NONE
-  REAL(KIND=8) :: ARR , DARr , H , H2 , h21 , H2Diff , h2n , HPRod3 , hsum , &
-  hsum2
+  REAL(KIND=8) :: ARR(90) , DARr(90) , Height_diff(90) , Height_diff2(90) , H2Diff(90) , HPRod3(90) 
+  REAL(KIND=8) :: hsum2 , h21 , h2n , hsum
   INTEGER :: i , N
 
-  DIMENSION H(90) , H2(90) , H2Diff(90) , HPRod3(90)
-  DIMENSION ARR(90) , DARr(90)
-  hsum = H(1) + H(2)
+  hsum = Height_diff(1) + Height_diff(2)
   hsum2 = hsum*hsum
-  h21 = H2(1)
+  h21 = Height_diff2(1)
   DARr(1) = (-ARR(1)*(hsum2-h21)+ARR(2)*hsum2-ARR(3)*h21)/HPRod3(1)
-  h2n = H2(N-1)
-  hsum = H(N-1) + H(N-2)
+  h2n = Height_diff2(N-1)
+  hsum = Height_diff(N-1) + Height_diff(N-2)
   hsum2 = hsum*hsum
-  DARr(N) = (ARR(N-2)*h2n-ARR(N-1)*hsum2+ARR(N)*(hsum2-h2n)) &
-  /HPRod3(N-2)
+
+  DARr(N) = (ARR(N-2)*h2n-ARR(N-1)*hsum2+ARR(N)*(hsum2-h2n))/HPRod3(N-2)           
+
   DO 100 i = 2 , N - 1
-      DARr(i) = (ARR(i+1)*H2(i-1)+ARR(i)*H2Diff(i-1)-ARR(i-1)*H2(i)) &
-      /HPRod3(i-1)
+      DARr(i) = (ARR(i+1)*Height_diff2(i-1)+ARR(i)*H2Diff(i-1)-ARR(i-1)*Height_diff2(i))/HPRod3(i-1)             
   100 ENDDO
+
   RETURN
 
 end SUBROUTINE HL__DIFFARR
@@ -6860,8 +6931,9 @@ end SUBROUTINE HL__RATEK
 
 SUBROUTINE HL__OCOEFF(D1,D2,V2,TN,TI,TE,RK1,RK2,VRSini,OA,OB,OBEta, &
   OPRod,HBEta,DTE,DTI,HPRodsub,HBEtasub,GSIn,CF21, &
-  BETa2,THCorr,RTTi,CF1n,NIT,O,O2,atomic_hydrogen,G,Nhgt,HNEw, &
-  H2,H2Diff,HPRod3,SINi,UCOs)
+  BETa2,THCorr,RTTi,CF1n,NIT,O,O2,atomic_hydrogen,G,Nhgt,height_diff, &
+  Height_diff2,H2Diff,HPRod3,SINi,UCOs)
+
   IMPLICIT NONE
   REAL(kind=8) :: ako , akosin , beta12 , BETa2(90) , cf12 , CF1n(90) , &
   cf1tot , CF21(90) , D1 , D2 , dd2 , delta , DTE , DTI , &
@@ -6872,7 +6944,7 @@ SUBROUTINE HL__OCOEFF(D1,D2,V2,TN,TI,TE,RK1,RK2,VRSini,OA,OB,OBEta, &
   REAL(kind=8) :: VRSini , wind , y
   INTEGER :: i , Nhgt
 
-  REAL(kind=8) :: NIT(90) , HNEw(90) , H2(90) , H2Diff(90) , HPRod3(90)
+  REAL(kind=8) :: NIT(90) , height_diff(90) , Height_diff2(90) , H2Diff(90) , HPRod3(90)
   DIMENSION D1(90) , D2(90) , V2(90) , TN(90) , TI(90) , TE(90) , &
   DTI(90) , DTE(90) , RK1(90) , RK2(90) , cf12(90) , &
   OA(90) , OB(90) , OBEta(90) , OPRod(90) , HBEta(90) , &
@@ -6883,8 +6955,8 @@ SUBROUTINE HL__OCOEFF(D1,D2,V2,TN,TI,TE,RK1,RK2,VRSini,OA,OB,OBEta, &
 ! on output oprod includes the effect of o-h charge exchange.
 ! hbeta is returned as part of the calculation.
 ! cf1n is passed from itemp,sqrt(ti) is passed from HL__CFIONS.
-  CALL HL__DIFFARR(TI,DTI,Nhgt,HNEw,H2,H2Diff,HPRod3)
-  CALL HL__DIFFARR(TE,DTE,Nhgt,HNEw,H2,H2Diff,HPRod3)
+  CALL HL__DIFFARR(TI,DTI,Nhgt,height_diff,Height_diff2,H2Diff,HPRod3)
+  CALL HL__DIFFARR(TE,DTE,Nhgt,height_diff,Height_diff2,H2Diff,HPRod3)
   DO 100 i = 1 , Nhgt
       GSIn(i) = G(i)*SINi
   100 ENDDO
@@ -6899,7 +6971,7 @@ SUBROUTINE HL__OCOEFF(D1,D2,V2,TN,TI,TE,RK1,RK2,VRSini,OA,OB,OBEta, &
   enddo
 
   CALL HL__CFIONS(D1,D2,TI,cf12,CF21,BETa2,RTTi,Nhgt)
-  CALL HL__DIFFARR(D2,dd2,Nhgt,HNEw,H2,H2Diff,HPRod3)
+  CALL HL__DIFFARR(D2,dd2,Nhgt,height_diff,Height_diff2,H2Diff,HPRod3)
   DO 200 i = 2 , Nhgt
       delta = 0.565*BETa2(i)
       beta12 = D2(i)*BETa2(i)/D1(i)
@@ -6928,13 +7000,13 @@ end SUBROUTINE HL__OCOEFF
 
 SUBROUTINE HL__HCOEFF(D2,D1,V1,TI,TE,VRSini,HA,HB,HPRod,DTE,DTI, &
   HPRodsub,GSIn,CF21,BETa2,THCorr,RTTi,RTTin, &
-  TINlog,NIT,O,O2,atomic_hydrogen,Nhgt,HNEw,H2,H2Diff,HPRod3, &
+  TINlog,NIT,O,O2,atomic_hydrogen,Nhgt,height_diff,Height_diff2,H2Diff,HPRod3, &
   SINi,UCOs)
   IMPLICIT NONE
 
   REAL(kind=8) :: akh , akhsin , BETa2(90) , CF21(90) , cf2n , cf2nk1 , &
   cf2nk2 , cf2tot , D1 , D2 , dd1 , DTE , DTI , dtot , GSIn(90) &
-  , atomic_hydrogen(90) , HA , HB , HPRod , HPRodsub(90) , HNEw(90) , H2(90) &
+  , atomic_hydrogen(90) , HA , HB , HPRod , HPRodsub(90) , height_diff(90) , Height_diff2(90) &
   , H2Diff(90) , HPRod3(90)
   REAL(kind=8) :: O(90) , O2(90) , RTTi(90) , RTTin(90) , SINi , TE , &
   THCorr(90) , TI , TINlog(90) , UCOs(90) , V1 , VRSini , &
@@ -6950,7 +7022,7 @@ SUBROUTINE HL__HCOEFF(D2,D1,V1,TI,TE,VRSini,HA,HB,HPRod,DTE,DTI, &
 ! in itemp and passed across.sqrt(ti) is passed from HL__CFIONS.
 
   akhsin = SINi/akh
-  CALL HL__DIFFARR(D1,dd1,Nhgt,HNEw,H2,H2Diff,HPRod3)
+  CALL HL__DIFFARR(D1,dd1,Nhgt,height_diff,Height_diff2,H2Diff,HPRod3)
   DO 100 i = 2 , Nhgt
       cf2nk1 = 6.61E-17*O(i)
       cf2nk2 = 2.0E-16*atomic_hydrogen(i)
@@ -6974,18 +7046,15 @@ end SUBROUTINE HL__HCOEFF
 
 
 
-SUBROUTINE HL__IONCHNG(A,B,BETa,Q,DN,V,VTOp,TCHange,TARea,Nhgt,H,H2, &
-  HPRod2,SINi,i_ion)
+SUBROUTINE HL__IONCHNG(A,B,BETa,Q,DN,V,VTOp,TCHange,TARea,Nhgt,Height_diff,Height_diff2,HPRod2,SINi,i_ion)                      
+
   IMPLICIT NONE
-  REAL(kind=8) :: A , aa , B , bb , BETa , diag , DN , H , H2 , HPRod2 , Q , &
-  rhs , SINi , sini2 , sub , sup
-  REAL(kind=8) :: TARea(90) , TCHange , topratio , V , VTOp , x , y
+  REAL(kind=8) :: A(90) , aa(90) , B(90) , bb(90) , BETa(90) , diag(90) , &
+                  DN(90) , Height_diff(90) , Height_diff2(90) , HPRod2(90) , Q(90) , &
+                  rhs(90) , SINi , sini2 , sub(90) , sup(90) , &
+                  TARea(90) , TCHange , topratio , V(90) , VTOp , x , y
   INTEGER :: i , i1 , Nhgt , n1 , i_ion
 
-  DIMENSION H(90) , H2(90) , HPRod2(90)
-  DIMENSION DN(90) , sub(90) , diag(90) , sup(90) , rhs(90) , &
-  A(90) , B(90) , BETa(90) , Q(90) , aa(90) , bb(90) , &
-  V(90)
   sini2 = SINi*SINi
   DO 100 i = 2 , Nhgt
       aa(i) = A(i)*SINi
@@ -6993,43 +7062,26 @@ SUBROUTINE HL__IONCHNG(A,B,BETa,Q,DN,V,VTOp,TCHange,TARea,Nhgt,H,H2, &
   100 ENDDO
   DO 200 i = 2 , Nhgt - 1
       x = bb(i)/HPRod2(i-1)
-      y = bb(i+1)/H2(i)
+      y = bb(i+1)/Height_diff2(i)
       sub(i) = x
-      diag(i) = aa(i)/H(i) - x - y*TARea(i) - BETa(i) - 1./TCHange
-      sup(i) = (y-aa(i+1)/H(i))*TARea(i)
+      diag(i) = aa(i)/Height_diff(i) - x - y*TARea(i) - BETa(i) - 1./TCHange
+      sup(i) = (y-aa(i+1)/Height_diff(i))*TARea(i)
       rhs(i) = -Q(i) - DN(i)/TCHange
-      if(i_ion == 1) then
-          write(60,1234) i,aa(i),h(i),x,y,tarea(i),beta(i),sini
-      endif
-      1234 format(i4,7e12.4)
   200 ENDDO
+
   DN(1) = Q(1)/BETa(1)
   rhs(2) = rhs(2) - sub(2)*DN(1)
   n1 = Nhgt - 1
-  topratio = bb(Nhgt)/(bb(Nhgt)+H(n1)*(VTOp*SINi-aa(Nhgt)))
+  topratio = bb(Nhgt)/(bb(Nhgt)+Height_diff(n1)*(VTOp*SINi-aa(Nhgt)))
+  write(179,*) 'YUP ', diag(n1) , bb(Nhgt),Height_diff(n1),VTOp,SINi,aa(Nhgt)
   diag(n1) = diag(n1) + sup(n1)*topratio
-!g
-  if (i_ion == 1) then
-      write(60,*) ' before tridiag'
-      do i=1,90
-          if(diag(i) > -0.01) diag(i) = -0.01
-          write(60,6822) i,sub(i),diag(i),sup(i),rhs(i)
-          6822 format(i4,e12.4,f20.10,2e12.4)
-      enddo
-  endif
+
   CALL HL__TRIDIAG(sub,diag,sup,rhs,n1,DN)
   DN(Nhgt) = DN(n1)*topratio
 
-  if (i_ion == 1) then
-      write(60,*) ' after tridiag'
-      do i=1,90
-          write(60,6822) i,dn(i)
-      enddo
-  endif
-
   DO 300 i = 2 , Nhgt
       i1 = i - 1
-      V(i) = A(i) + B(i)*((DN(i1)/DN(i))-1.)*SINi/H(i1)
+      V(i) = A(i) + B(i)*((DN(i1)/DN(i))-1.)*SINi/Height_diff(i1)
   300 ENDDO
   RETURN
 
@@ -7503,74 +7555,6 @@ end SUBROUTINE HL__calculate_altitudes
 
 
 
-SUBROUTINE HL__calculate_points_along_the_tube(TOPht,NSTeps,ZKM,TARea,H,H2,H2Diff,HPRod2, &
-  HPRod3)
-  IMPLICIT NONE
-  REAL(kind=8) :: &
-  diff , H , H2 , H2Diff , hi , hi1 , HPRod2 , HPRod3 , prod , &
-  re , TARea(90) , TOPht , x , z , ZKM
-  INTEGER :: i , NSTeps
-  DIMENSION H(90) , H2(90) , H2Diff(90) , HPRod2(90) , HPRod3(90)
-
-! this routine sets up the heightsteps along a plasma tube(presumed
-! straight).as r=1,2,....,nsteps,we have the following:
-! zkm(r)=f(r)
-! z(r)=(zkm(r)+re)*1000.
-! h(r)=z(r+1)-z(r)
-! h2(r)=h(r)*h(r)
-! h2diff(r)=h2(r+1)-h2(r)
-! hprod2(r)=h(r)*h(r+1)
-! hprod3(r)=h(r)*h(r+1)*(h(r)+h(r+1))
-
-! all functions of h are passed in common blocks.
-
-  DATA re/6371./
-  DIMENSION ZKM(90) , z(90)
-
-! set lower height
-
-  ZKM(1) = 100.
-  z(1) = (ZKM(1)+re)*1.E3
-
-  DO 100 i = 1 , 57
-  !c       x=zkm(i) + 5.*exp(0.0036*(zkm(i)-100.))
-      x = ZKM(i) + 5.*EXP(0.0036*(ZKM(i)-100.))
-      IF ( x > TOPht ) GOTO 200
-      ZKM(i+1) = x
-      z(i+1) = (x+re)*1.E3
-  100 ENDDO
-  200 DO 300 i = 59 , 90
-      x = ZKM(i-1) + 300.
-      IF ( x > TOPht ) GOTO 400
-      ZKM(i) = x
-      z(i) = (x+re)*1.E3
-  300 ENDDO
-  400 NSTeps = i - 1
-
-  DO 500 i = 1 , NSTeps - 1
-      TARea(i) = (z(i+1)/z(i))**3
-  500 ENDDO
-  DO 600 i = 1 , NSTeps - 1
-      diff = z(i+1) - z(i)
-      H(i) = diff
-      H2(i) = diff*diff
-  600 ENDDO
-  DO 700 i = 1 , NSTeps - 2
-      H2Diff(i) = H2(i+1) - H2(i)
-      hi = H(i)
-      hi1 = H(i+1)
-      prod = hi*hi1
-      HPRod2(i) = prod
-      HPRod3(i) = prod*(hi+hi1)
-  700 ENDDO
-! do i = 1 , nsteps
-! write(6,*) i, zkm(i)
-! enddo
-  RETURN
-
-
-
-end SUBROUTINE HL__calculate_points_along_the_tube
 
 
 
@@ -13950,19 +13934,6 @@ END SUBROUTINE CALL_DYNAMO_CALCULATE_V_UPWARDS_AT_APEX
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 END MODULE IONOSPHERE_PLASMASPHERE
+
+

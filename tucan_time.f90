@@ -40,7 +40,7 @@
       REAL*8 Universal_Time_hours
       REAL*8 Universal_Time_seconds
       REAL*8  Start_time_UT_hours,Stop_time_UT_hours
-      INTEGER i , j , l , m , n
+      INTEGER i , l , m , n
       INTEGER nnstop , nnstrt
       INTEGER nn , nnloop , &
               nn_composition_counter , nn_smoothing_counter
@@ -216,10 +216,6 @@
       character*4 :: time_string
       character*13 :: datetime_string
       LOGICAL :: kill_file_exists
-
-!  INTEGER NPTS
-      INTEGER NMP
-      INTEGER NLP
 
       low_lat_efields_from_electrodynamics_or_empirical = 'ELECTRODYNAMICS'
 
