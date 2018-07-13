@@ -11158,7 +11158,7 @@ end SUBROUTINE ML__get_empirical_vertical_exb
 
 
 SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
-  ,q,vi,ti,te,ne,ni_save,vi_save,ti_save,te_save &
+  ,q_coordinate,vi,ti,te,ne,ni_save,vi_save,ti_save,te_save &
   ,mp,lp,in,is)
 
 !*********************************************
@@ -11169,7 +11169,7 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
 !*********************************************
 
   IMPLICIT NONE
-  REAL(kind=8) :: BLON , DT , Q , TE , TI , VI , vpeq , vzeq , &
+  REAL(kind=8) :: BLON , DT , q_coordinate , TE , TI , VI , vpeq , vzeq , &
   vpeq_tim , vt300
   ! removedNMP, NLP, NPTS declaration mjh
   INTEGER :: i , lp , mp , istop
@@ -11194,7 +11194,7 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
   INTEGER :: IACtive(NMP,NLP)
   INTEGER ::   IN(NMP,NLP) , IS(NMP,NLP)
   DIMENSION  BLOn(NMP,NLP)
-  DIMENSION  Q(NPTS,NMP) , &
+  DIMENSION  q_coordinate(NPTS,NMP) , &
   TI(NPTS,NMP,2) , TE(NPTS,NMP) , &
   NI(NPTS,NMP,2) , VI(NPTS,NMP,2) , &
   NE(NPTS,NMP)
@@ -11293,7 +11293,7 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
       write(6,*) '     '
   endif
 !g
-!g first interpolate in q for the inner tube.....
+!g first interpolate in q_coordinate for the inner tube.....
 !g
   if(iww == 1) write(88,*) '++++++++++ INNER TUBE ++++++++++++'
   do 7000 ip=in(mp,lp),is(mp,lp)
@@ -11304,7 +11304,7 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
   !g loop over the inner tube ......
   !g
       do i=in(mp,lp_in),is(mp,lp_in)
-          if(q(i,mp) < q(ip,mp)) then
+          if(q_coordinate(i,mp) < q_coordinate(ip,mp)) then
               isouth=i
               inorth=i-1
               goto 3488
@@ -11324,8 +11324,8 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
   !g
       if(iww == 1) write(88,*) 'ispecial ',ispecial
       if(ispecial == 0) then
-          factor2=(q(ip,mp)-q(isouth,mp))/ &
-          (q(inorth,mp)-q(isouth,mp))
+          factor2=(q_coordinate(ip,mp)-q_coordinate(isouth,mp))/ &
+          (q_coordinate(inorth,mp)-q_coordinate(isouth,mp))
           if(iww == 1) write(88,*) 'factor2 inner',factor2
           ni1_in(ip)=(factor2*(ni(inorth,mp,1) - &
           ni(isouth,mp,1))) + ni(isouth,mp,1)
@@ -11361,14 +11361,14 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
       if(iww == 1) write(88,*) factor2,isouth,inorth,ni1_in(ip)
   7000 ENDDO
 !g
-!g then interpolate in q for the outer tube.....
+!g then interpolate in q_coordinate for the outer tube.....
 !g
   if(iww == 1) write(88,*) '++++++++++ OUTER TUBE ++++++++++++'
   do 8000 ip=in(mp,lp),is(mp,lp)
       if(iww == 1) write(88,*) 'point ',ip
       ispecial=0
       do i=in(mp,lp_out),is(mp,lp_out)
-          if(q(i,mp) < q(ip,mp)) then
+          if(q_coordinate(i,mp) < q_coordinate(ip,mp)) then
               isouth=i
               inorth=i-1
               goto 3489
@@ -11387,8 +11387,8 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
   !g
       if(iww == 1) write(88,*) 'ispecial ',ispecial
       if(ispecial == 0) then
-          factor2=(q(ip,mp)-q(isouth,mp))/ &
-          (q(inorth,mp)-q(isouth,mp))
+          factor2=(q_coordinate(ip,mp)-q_coordinate(isouth,mp))/ &
+          (q_coordinate(inorth,mp)-q_coordinate(isouth,mp))
           if(iww == 1) write(88,*) 'factor2 outer',factor2
           ni1_out(ip)=(factor2*(ni(inorth,mp,1) - &
           ni(isouth,mp,1))) + ni(isouth,mp,1)
