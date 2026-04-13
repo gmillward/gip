@@ -1,27 +1,29 @@
-#
-UNAMES = $(shell uname -s)
-EXEC = gt_gip_model
+# Compiler and Flags
+FC      = gfortran
+#FFLAGS  = -O3 -Wall -fdefault-real-8 -fmax-stack-var-size=131072 -Wno-unused-variable
+FFLAGS  = -O3 -Wall -fdefault-real-8 -frecursive -Wno-unused-variable -Wno-maybe-uninitialized -Wunused-label -Wunused-function -Wunused-label -fmax-errors=1 -Werror=unused-dummy-argument
 
-FORTRAN=ifort
-FFLAGS= -O3 -r8 -I$(NETCDF)/include
-#FFLAGS_F77=-O3 -r8
-FFLAGS_FIXED= -O3 -r8 -i4
-LFLAGS=-L. -L$(NETCDF)/lib -lnetcdf
-#
-OBJS =  \
-       params.o cons.o dynamo.o sunloc.o heelis.o \
-       mudcom.o  mud.o  mudmod.o  muh2cr.o  util.o \
-       GIP_ionosphere_plasmasphere.o  GT_thermosphere.o \
-       tucan_time.o
-# 
-.SUFFIXES:  .f .f90 .F .f77
-#
-$(EXEC):	$(OBJS)
-	$(FORTRAN) -o $@ $(OBJS) $(LFLAGS)  $(LIBS)
-#
-.f90.o:
-	$(FORTRAN) -c $(FFLAGS) $<
-#
-.F.o:
-	$(FORTRAN) -c $(FFLAGS_FIXED) $<
-#
+# NetCDF Paths (Adjust if using MacPorts or Intel)
+NC_DIR  = /opt/homebrew
+NF_DIR  = /opt/homebrew
+
+# Include and Library flags
+INCS    = -I$(NF_DIR)/include
+LIBS    = -L$(NF_DIR)/lib -lnetcdff -L$(NC_DIR)/lib -lnetcdf
+
+# Project Files
+TARGET  = gt_gip_model
+SRCS    = GIP_ionosphere_plasmasphere.f90  GT_thermosphere.f90  run_parameters.f90  tucan_time.f90
+OBJS    = $(SRCS:.f90=.o)
+
+# Rules
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
+%.o: %.f90
+	$(FC) $(FFLAGS) $(INCS) -c $<
+
+clean:
+	rm -f $(OBJS) $(TARGET) *.mod

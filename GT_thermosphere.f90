@@ -65,10 +65,13 @@
 
 
            SUBROUTINE GT_thermosphere( &
-                       GT_input_dataset, &
                        GT_output_dataset, &
+                       i_no_day, &
+                       i_graphics_out_start, &
                        idump_gt, &
-                       dcol,dlon,solar_declination_angle_radians, &
+                       iout_high, &
+                       ipint_high, &
+                       solar_declination_angle_radians, &
                        nn,nnloop, &
                        Universal_Time_seconds, &
                        nn_smoothing_counter, &
@@ -80,12 +83,10 @@
                        lt11 , lt22 , lt23 , lt24 , lt25, &
                        Electron_density_m3, &
                        O_plus_density_m3, &
-                       H_plus_density_m3, &
                        NO_plus_density_m3, &
                        O2_plus_density_m3, &
                        Te_K, &
                        Ti_Oplus_K, &
-                       Ti_Hplus_K, &
                        exns,eyns,ezns, &
                        Dip_angle_degrees,B_magnitude_nT, &
                        Magnetic_latitude_degrees,Magnetic_longitude_degrees, &
@@ -108,12 +109,15 @@
       IMPLICIT NONE
 
       LOGICAL sw_smoothing_this_time_step
-      CHARACTER*100 GT_input_dataset, GT_output_dataset
+      CHARACTER*100 GT_output_dataset
 
       INTEGER istop , nn_smoothing_counter , i_smoothing_frequency, &
               ndd , j , mmin , mmax , &
               nn_composition_counter , i_neutral_composition_calling_frequency, &
               idump_gt
+      INTEGER iout_high, ipint_high
+      INTEGER i_no_day , i_graphics_out_start
+
 
       REAL*8 s , f107
       REAL(kind=8) :: Universal_Time_seconds
@@ -122,7 +126,7 @@
       REAL(kind=8) :: UT_minus_12UT_in_seconds
 
       REAL*8 ped(15,91,20) , hall(15,91,20)
-      REAL*8 dcol , dlon , cdx0 , cdy0 , cdz0
+      REAL*8 cdx0 , cdy0 , cdz0
 
       REAL*8 emaps(21,20,7) , cmaps(21,20,7) , profile(15,21) , &
            dmsp(21,20,5,5) , dmspmod(21,20,16,7) , profil2(15,16) , &
@@ -131,7 +135,7 @@
            ampl22 , ampl11 , ampl25
       REAL*8 ampl23 , ampl24 , angdif , ANROT , &
            b1 , b11 , b12 , b2 , b3 , b4 , b5 , b6
-      REAL*8 bb , brad , &
+      REAL*8 brad , &
            BZ , c1 , c2 , c3 , c4 , c5 , &
            c51 , c52 , btheta , bphi
       REAL*8 Magnetic_latitude_degrees(91,20)
@@ -211,6 +215,7 @@
               nmin
       INTEGER nn , nnloop
       INTEGER nu , nxx , nyy
+      INTEGER bb
       PARAMETER (PI=3.14159,R0=6.370E06, &
                  R0SQ=R0*R0,Electron_charge_Coulombs=1.602E-19,ANROT=7.29E-05,GRAV=9.5, &
                  GSCON=8.3141E+03, &
@@ -270,7 +275,6 @@
                 teff(15) , rvin(15) , ramin(15)
 
       REAL*8    O_plus_density_m3(15,91,20) , &
-                H_plus_density_m3(15,91,20) , &
                 NO_plus_density_m3(15,91,20) , &
                 O2_plus_density_m3(15,91,20) , &
                 ti1(15,91,20) , &
@@ -281,8 +285,7 @@
                 ez2d(91,20)
 
       REAL*8    Te_K(15,91,20), &
-                Ti_Oplus_K(15,91,20), &
-                Ti_Hplus_K(15,91,20)
+                Ti_Oplus_K(15,91,20)
 
        REAL(kind=8) wind_southwards_ms1_copy(15,91,20)
        REAL(kind=8) wind_eastwards_ms1_copy(15,91,20)
@@ -344,16 +347,16 @@
             mgtype = 2
             aa = 180.0
             yy = 2
-            bb = 4.0
-            deltha = bb*DTR
+            bb = 4
+            deltha = float(bb)*DTR
             delphi = 36.0*DTR
             sx1 = deltha*R0
             sx3 = (sx1*sx1)/4.0
             sx5 = sx3/R0SQ
             nyy = yy
-            nxx = ixx
-            IF ( bb.EQ.4. ) nyy = yy + 1
-            IF ( bb.EQ.4. ) nxx = ixx - 1
+            nxx = ixx     ! ixx = 90
+            IF ( bb.EQ.4 ) nyy = yy + 1    ! nyy = 3
+            IF ( bb.EQ.4 ) nxx = ixx - 1   ! nxx = 89
 
 
 !           istop = 1
@@ -399,7 +402,7 @@
 
                   mn = m + 1
                   ms = m - 1
-                  colatitude_degrees = aa - (m-1.0)*bb/2.0
+                  colatitude_degrees = aa - (m-1.0)*float(bb)/2.0
                   colatitude_radians = colatitude_degrees*DTR
 !- check what hemisphere
                   IF ( m .LE. m_equator - 1) THEN
@@ -490,13 +493,12 @@
 !       write(6,*) Wind_eastwards_ms1(1,m,l)
         CALL TIDES(nn,m,l,hough11,hough22,hough23, &
         hough24,hough25,ampl11,ampl22,ampl23,ampl24,ampl25,ht, &
-        Wind_southwards_ms1,Wind_eastwards_ms1,cp, &
+        Wind_southwards_ms1,Wind_eastwards_ms1, &
         GT_time_step_seconds,rmt,temp,lt11,lt22,lt23,lt24,lt25,temp0,vy0,temp0av,dh0)
 !       write(6,*) Wind_eastwards_ms1(1,m,l)
 !       write(6,*) 'Done Tides '
 
-        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l), &
-                               rmt(1,m,l),cp)
+        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),cp)
                   DO 1625 n = 1 , 15
                      nu = n + 1
                      nd = n - 1
@@ -1126,17 +1128,17 @@
 
             zz = m_North_Pole - 1
             DO 1780 m = 1 , m_North_Pole , zz
-               fp1 = 1.0
-               IF ( bb.EQ.4. ) fp1 = 2.0
+               fp1 = 1
+               IF ( bb.EQ.4. ) fp1 = 2
                IF ( m.EQ.1 ) THEN
                   mm = 1
-                  fp = -1.0
+                  fp = -1
                ENDIF
                IF ( m.EQ.m_North_Pole ) THEN
                   mm = 2
-                  fp = 1.0
+                  fp = 1
                ENDIF
-               mp = m - (fp*fp1) + 0.1
+               mp = int(m - (fp*fp1))
 !
                DO 1750 n = 1 , 15
                   vpx(n,mm) = 0.0
@@ -1223,7 +1225,7 @@
                   DO 1805 l = 1 , 20
                      DO 1804 m = 1 , m_North_Pole
 
-        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),rmt(1,m,l),cp)
+        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),cp)
 
                         DO 1802 n = 2 , 15
                            nd = n - 1
@@ -1322,7 +1324,7 @@
         DO 1810 l = 1 , 20
         DO 1808 m = 1 , m_North_Pole
 
-        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),rmt(1,m,l),cp)
+        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),cp)
 
         DO 1806 n = 2 , 15
                  eps(n,m,l) = cp(n)*Temperature_K(n,m,l) + (Wind_southwards_ms1(n,m,l)**2+Wind_eastwards_ms1(n,m,l)**2) / 2.0
@@ -1354,8 +1356,7 @@
 
             DO 1840 l = 1 , 20
                DO 1820 m = 1 , m_North_Pole
-        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l), &
-                               rmt(1,m,l),cp)
+        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),cp)
                   DO 1815 n = 2 , 15
                      nd = n - 1
                      temp(n) = (-(Wind_southwards_ms1(n,m,l)**2+Wind_eastwards_ms1(n,m,l)**2)/2.0+eps(n,m &
@@ -1407,15 +1408,25 @@
 
          if (idump_GT .eq. 1) then
 
-         call write_gt_netcdf_history(GT_output_dataset)                     
+         call write_gt_netcdf_history(GT_output_dataset)
 
          endif
 
+        IF ( i_no_day.ge.i_graphics_out_start ) THEN
+
          Universal_Time_hours = Universal_Time_seconds / 3600.
 
-!       irec_number = irec_number + 1
-!       call write_gt_netcdf_graphics(graphics_file,irec_number, &
-!                                     electron_density_m3,Universal_Time_hours)
+        if(iout_high.eq.ipint_high) then
+        
+        irec_number = irec_number + 1
+        call write_gt_netcdf_graphics(graphics_file,irec_number, &
+                                      electron_density_m3,Universal_Time_hours)
+
+        iout_high = 0
+
+        endif
+        ENDIF
+
 
        wind_southwards_ms1_copy(:,:,:) = wind_southwards_ms1(:,:,:)
        wind_eastwards_ms1_copy(:,:,:) = wind_eastwards_ms1(:,:,:)
@@ -1535,7 +1546,7 @@
       mj1=45
       mj2 = ixx - mj1
       mjk = mj1
-      mj1 = mj1*fden
+      mj1 = int(mj1*fden)
       mj2 = ixx - mj1
 
 ! input datasets
@@ -1684,11 +1695,10 @@
 !
         CALL TIDES(nnstrt,m,l,hough11,hough22,hough23, &
         hough24,hough25,ampl11,ampl22,ampl23,ampl24,ampl25,ht, &
-        wind_southwards_ms1,wind_eastwards_ms1,cp, &
+        wind_southwards_ms1,wind_eastwards_ms1, &
         GT_time_step_seconds,rmt,temp,lt11,lt22,lt23,lt24,lt25,temp0,vy0,temp0av,dh0)
 
-        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l), &
-                               rmt(1,m,l),cp)
+        CALL SPECIFIC_HEAT(psao(1,m,l),psmo(1,m,l),psmn(1,m,l),cp)
             DO 1460 n = 2 , 15
                nd = n - 1
                temp(n) = (-(wind_southwards_ms1(n,m,l)**2+wind_eastwards_ms1(n,m,l)**2)/2.0+eps(n,m,l)) &
@@ -1896,7 +1906,7 @@
       istat = nf_def_var(ncid,"psao",NF_REAL,4,ids4,idv_psao2)
       istat = nf_def_var(ncid,"psmo",NF_REAL,4,ids4,idv_psmo2)
       istat = nf_def_var(ncid,"Ne_m3",NF_REAL,4,ids4,idv_Ne2)
-      istat = nf_def_var(ncid,"UT",NF_REAL,1,id_n_time,idv_UT2)
+      istat = nf_def_var(ncid,"UT",NF_REAL,1,(/id_n_time/),idv_UT2)
 !
 ! Take out of define mode:
       istat = nf_enddef(ncid)
@@ -1967,16 +1977,16 @@
       data_start(3) = 1
       data_start(4) = it
 
-      wind_southwards_ms1_sngl(:,:,:) = real(wind_southwards_ms1(:,:,:))
-      wind_eastwards_ms1_sngl(:,:,:)  = real(wind_eastwards_ms1(:,:,:))
-      wvz_sngl(:,:,:)                 = real(wvz(:,:,:))
-      rmt_sngl(:,:,:)                 = real(rmt(:,:,:))
-      temperature_K_sngl(:,:,:)       = real(temperature_K(:,:,:))
-      ht_sngl(:,:,:)                  = real(ht(:,:,:))
-      psao_sngl(:,:,:)                = real(psao(:,:,:))
-      psmo_sngl(:,:,:)                = real(psmo(:,:,:))
-      electron_density_m3_sngl(:,:,:) = real(electron_density_m3(:,:,:))
-      Universal_Time_hours_sngl       = real(Universal_Time_hours)
+      wind_southwards_ms1_sngl(:,:,:) = real(wind_southwards_ms1(:,:,:), kind=4)
+      wind_eastwards_ms1_sngl(:,:,:)  = real(wind_eastwards_ms1(:,:,:), kind=4)
+      wvz_sngl(:,:,:)                 = real(wvz(:,:,:), kind=4)
+      rmt_sngl(:,:,:)                 = real(rmt(:,:,:), kind=4)
+      temperature_K_sngl(:,:,:)       = real(temperature_K(:,:,:), kind=4)
+      ht_sngl(:,:,:)                  = real(ht(:,:,:), kind=4)
+      psao_sngl(:,:,:)                = real(psao(:,:,:), kind=4)
+      psmo_sngl(:,:,:)                = real(psmo(:,:,:), kind=4)
+      electron_density_m3_sngl(:,:,:) = real(electron_density_m3(:,:,:), kind=4)
+      Universal_Time_hours_sngl       = real(Universal_Time_hours, kind=4)
  
 
       istat = nf_put_vara_real(ncid,idv_vsouth2,data_start,data_count,wind_southwards_ms1_sngl)
@@ -2006,7 +2016,7 @@
       istat = nf_put_vara_real(ncid,idv_Ne2,data_start,data_count,electron_density_m3_sngl)
       if (istat /= NF_NOERR) call handle_ncerr_gt(istat,'Error writing var Electron Density',0)
 
-      istat = nf_put_vara_real(ncid,idv_UT2,it,1,Universal_Time_hours_sngl)
+      istat = nf_put_vara_real(ncid,idv_UT2,(/it/),(/1/),(/Universal_Time_hours_sngl/))
       if (istat /= NF_NOERR) call handle_ncerr_gt(istat,'Error writing var UT',0)
 
 !
@@ -2342,7 +2352,7 @@
 
 
       Subroutine calculate_magnetic_parameters_using_apex( &
-                 B_magnitude_apex_nT,B_dip_angle_apex_degrees,B_declination_apex_degrees, &
+                 B_magnitude_apex_nT,B_dip_angle_apex_degrees, &
                  Magnetic_latitude_degrees,Magnetic_longitude_degrees)
 
       IMPLICIT NONE
@@ -2354,7 +2364,7 @@
 
       REAL*8  B_magnitude_apex_nT(91,20)
       REAL*8  B_dip_angle_apex_degrees(91,20)
-      REAL*8  B_declination_apex_degrees(91,20)
+
       REAL*8  B_magnitude_horizontal_apex_nT
       REAL*8  Magnetic_latitude_degrees(91,20)
       REAL*8  Magnetic_longitude_degrees(91,20)
@@ -2543,7 +2553,7 @@
 !C  EVALUATE SOURCES AND SINKS
 !C  **
             DO 40 n = 1 , nb
-               alpha = 2.76D-46*EXP(710./T(n,m,l))
+               alpha = 2.76E-46*EXP(710./T(n,m,l))
                gamma = 1.E-26
                beta = 4.2E-17
                delta = 3.5E-17
@@ -3022,7 +3032,7 @@
             mmm = 2
             ifp = 1
          ENDIF
-         mp = m - (ifp*fp1) + 0.1
+         mp = nint(m - (ifp*fp1))
          DO 450 n = 1 , 15
             rmtp(n,mmm) = 0.
             psaop(n,mmm) = 0.
@@ -3170,11 +3180,11 @@
 
 
 
-      SUBROUTINE SPECIFIC_HEAT(P1,P2,P3,RMT,CP)
+      SUBROUTINE SPECIFIC_HEAT(P1,P2,P3,CP)
       IMPLICIT NONE
-      REAL*8 c , CP , P1 , P2 , P3 , RMT
+      REAL*8 c , CP , P1 , P2 , P3
       INTEGER n
-      DIMENSION P1(15) , P2(15) , P3(15) , CP(15) , c(3) , RMT(15)
+      DIMENSION P1(15) , P2(15) , P3(15) , CP(15) , c(3)
       REAL*8 m1 , m2 , m3
       DATA c/1298.9 , 909.26 , 1039.2/
       DATA m1 , m2 , m3/16. , 32. , 28./
@@ -3239,15 +3249,15 @@
       IF ( l.GT.7 ) l = 7
 !c  **
       ri = ESSa/18.0 + 11.
-      i1 = ri
-      ri = ri - i1
+      i1 = int(ri)
+      ri = ri - float(i1)
       IF ( i1.GT.20 ) i1 = i1 - 20
       i2 = i1 + 1
       IF ( i2.GT.20 ) i2 = i2 - 20
       th = ABS(THMagd) - 50.
       rj = th/2. + 1.
-      j1 = rj
-      rj = rj - j1
+      j1 = int(rj)
+      rj = rj - float(j1)
       j2 = j1 + 1
 !
       eflux = rj*ri*EMAps(j2,i2,l) + (1.-rj)*ri*EMAps(j1,i2,l) &
@@ -3737,15 +3747,15 @@
       ld = KP + 1
 !c  **
       ri = ESSa/18.0 + 11.
-      i1 = ri
-      ri = ri - i1
+      i1 = int(ri)
+      ri = ri - float(i1)
       IF ( i1.GT.20 ) i1 = i1 - 20
       i2 = i1 + 1
       IF ( i2.GT.20 ) i2 = i2 - 20
       th = ABS(THMagd) - 50.
       rj = th/2. + 1.
-      j1 = rj
-      rj = rj - j1
+      j1 = int(rj)
+      rj = rj - float(j1)
       j2 = j1 + 1
 !c  **
       DO 100 i = 1 , 16
@@ -3786,7 +3796,7 @@
 
 
       SUBROUTINE TIDES (nn,m,l,hough11,hough22,hough23,hough24,hough25, &
-         ampl11,ampl22,ampl23,ampl24,ampl25,ht,vx,vy,cp,DTIME,rmt,temp, &
+         ampl11,ampl22,ampl23,ampl24,ampl25,ht,vx,vy,DTIME,rmt,temp, &
          lt11,lt22,lt23,lt24,lt25,temp0,vy0,temp0av,ht0)
 !
 ! This subroutine calculates horizontal winds from the geopotential
@@ -3807,7 +3817,7 @@
       REAL*8 phtd,iphtd,hough11(181),derhtd,der11,merhtd,dmerhtd,facd
       REAL*8 vxd(15,91,20),vyd(15,91,20),lambda11,shift11
       REAL*8 merht,dmerht,fac,vx(15,91,20),vy(15,91,20)
-      REAL*8 temp(15),cp(15),DTIME,GSCON,rmt(15,91,20),H
+      REAL*8 temp(15),DTIME,GSCON,rmt(15,91,20),H
       REAL*8 lambda22 , lambda23 , lambda24 , a1 , a2 , a3 , a4 , a5
       REAL*8 lt11 , lt22 , lt23 , lt24  , lt25
       REAL*8 shift22 , shift23 , shift24 , shift25
@@ -4244,16 +4254,16 @@
       essa=(l-1.)*18.
       rll=essa/7.5+25.
       if(rll.ge.49.0)rll=rll-48.0
-      ll=rll
-      fac=rll-ll
+      ll=int(rll)
+      fac=rll-float(ll)
       ll1=ll
       ll2=ll1+1
       eyns(1,m,l)=(plvu(ll1)*(1.-fac)+plvu(ll2)*fac)*b
       eyns(2,m,l)=eyns(1,m,l)
       rll=essa/7.5+24.5
       if(rll.ge.49.0)rll=rll-48.0
-      ll=rll
-      fac=rll-ll
+      ll=int(rll)
+      fac=rll-float(ll)
       ll1=ll
       ll2=ll1+1
       exns(1,m,l)=(zonal(ll1)*(1.-fac)+zonal(ll2)*fac)*b*sin(dip)

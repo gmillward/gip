@@ -1,0 +1,65 @@
+../data/Day_156_f10_70_3_test3.gt.12:00UT
+../data/Day_354_f10_70_3_test4b.gt
+../data/Day_156_f10_70_3_test3.gip.nc
+../data/Day_354_f10_70_3_test4b.gip.nc
+/p63/cmit2/gip/gip_static_files/GIP_apex_coords.13813.31hts.format.sngl
+F    --     sw_electro - electrodynamics
+T    --     sw_unformatted_input -> T = unformatted, F = formatted
+T    --     sw_unformatted_output -> T = unformatted, F = formatted
+F    --     sw_GIP_input_dataset_is_binary
+T    --     sw_GIP_output_dataset_is_binary
+F    --     sw_static_mag_field_datasets_are_binary
+F    --     sw_External_model_provides_hyd_density
+F    --     sw_External_model_provides_NO_N4S_densities
+F    --     sw_External_model_provides_low_lat_E_fields
+T    --     sw_input_Auroral_production_is_single_overall_rate
+F    --     sw_reset_GIP_ion_densities_on_startup
+T    --     sw_GIP_input_dataset_is_netcdf
+T    --     sw_GIP_output_dataset_is_netcdf
+354         Day number
+70.         F10.7
+60          GT_timestep_in_seconds
+15          GIP_calling_frequency (multiples of GT calls)
+1           start integer
+1440        stop integer
+1           number of days to run for
+1           graphics output from which day
+60          output frequency (multiples of GT timestep) for graphics out code '1'
+15          output frequency (multiples of GT timestep) for graphics out code '2'
+5           GT smoothing frequency (multiples of GT timestep)
+1           GT composition calling frequency (multiples of GT timestep)
+1000.       GT maximum wind before smoothing
+130.        GT minimum temperature before smoothing
+0.,300.,0.,0.,0.
+8.0,1.0,7.4,5.5,10.0
+2                       Rmt (Mean Molecular Mass)
+2                       Ht  (Height of Pressure Level)
+2                       Tn  (Neutral Temperature)
+0                       Te  (Electron Temperature)
+2                       Ne  (Electron Density on Pressure Levels)
+2                       VnX (Meridional Wind)
+2                       VnY (Zonal Wind)
+2                       VnZ (Vertical Wind)
+2                       VionX (Meridional Ion Drift)
+2                       VionY (Zonal Ion Drift)
+0                       ViZ (Vertical Ion Drift - no output at present)
+0                       Ex  (Meridional Electric Field)
+0                       Ey  (Zonal Electric Field)
+0                       Ti  (Ion Temperature)
+0                       High_lat_tubes (Full high_lat_tubes data)
+0                       ion_data  (Electron Density on fixed heights)
+0                       flux_tubes (Full flux_tubes_data)
+0                       PSAO - mass mixing ratio of atomic oxygen
+0                       PSMO - mass mixing ratio of molecular oxygen
+0                       PSMN - mass mixing ratio of molecular nitrogen
+2                       O+ density
+2                       NO+ density
+2                       O2+ density
+2                       Pederson Conductivity
+2                       Hall Conductivity
+2                       Joule heating 1 (c7)
+2                       Joule heating 2 (c77)
+0                       Current Jrad
+0                       Current Jth
+0                       Current Jphi
+0                       Medley of Parameters at level 12

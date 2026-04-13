@@ -1,0 +1,27 @@
+#
+UNAMES = $(shell uname -s)
+EXEC = gt_gip_model3
+
+FORTRAN=ifort
+#FFLAGS=-c -O3 -132 -warn unused
+#FFLAGS=-O3 -check bounds
+FFLAGS=-O3 -I$(NETCDF)/include
+FFLAGS_F77= 
+LFLAGS=-L. -L$(NETCDF)/lib -lnetcdf
+#
+OBJS = GIP_ionosphere_plasmasphere.o  GT_thermosphere.o  run_parameters.o  tucan_time.o
+# 
+.SUFFIXES:  .f .f90 .F .f77
+#
+$(EXEC):	$(OBJS)
+	$(FORTRAN) -o $@ $(OBJS) $(LFLAGS)  $(LIBS)
+#
+.f.o:
+	$(FORTRAN) -c $(FFLAGS_F77) $<
+.f90.o:
+	$(FORTRAN) -c $(FFLAGS) $<
+.F.o:
+	$(FORTRAN) -c $(FFLAGS) $<
+.f77.o:
+	$(FORTRAN) -c $(FFLAGS_F77) $<
+#

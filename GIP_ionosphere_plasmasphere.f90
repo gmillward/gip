@@ -1,9 +1,5 @@
 MODULE IONOSPHERE_PLASMASPHERE
 
-  use cons_module
-  use dynamo_module
-  use heelis_module
-
   IMPLICIT NONE
 
   include 'netcdf.inc'
@@ -20,10 +16,6 @@ MODULE IONOSPHERE_PLASMASPHERE
   PARAMETER (NPTS = 13813)
   PARAMETER (NMP  = 80)
   PARAMETER (NLP  = 67)
-  INTEGER N_DYN_LAT
-  PARAMETER (N_DYN_LAT=97)
-  REAL(kind=8) potential_field(NMP+1,N_DYN_LAT)
-  LOGICAL sw_feedback_electrodynamic_efields
 ! INTEGER NHGT
 ! PARAMETER (NHGT  = 86)
   INTEGER which_ion
@@ -129,10 +121,9 @@ MODULE IONOSPHERE_PLASMASPHERE
   REAL(kind=8) n2_plus_3d(NPTS,NMP)
   REAL(kind=8) n_plus_3d(NPTS,NMP)
   REAL(kind=8) vpeq(NMP,NLP)
-  REAL(kind=8) vpeq_saved(NMP,NLP)
   REAL(kind=8) vzon(NMP,NLP)
-  REAL(kind=8) :: V_upwards_at_apex_electrodynamics(NMP,NLP)
 
+  INTEGER :: i_first_call_of_plasma
   REAL(kind=8) factor_ht_3d(90,91,20)
   INTEGER iht_above_3d(90,91,20)
   INTEGER iht_below_3d(90,91,20)
@@ -173,7 +164,7 @@ CONTAINS
 
 
 
-SUBROUTINE gip_init(first_call_of_plasma,GIP_switches,iday,uthr,f107, &
+SUBROUTINE gip_init(GIP_switches,iday,uthr,f107, &
                         GIP_input_dataset,GIP_output_dataset, &
                         static_file_location,GIP_Apex_coords_static_file, &
                         thermospheric_model_name, &
@@ -208,13 +199,13 @@ SUBROUTINE gip_init(first_call_of_plasma,GIP_switches,iday,uthr,f107, &
     character(100) :: GIP_input_dataset , GIP_output_dataset
     character(100) :: static_file_location
     character(100) :: GIP_Apex_coords_static_file
-    character(2) :: hours_string
-    character(2) :: mins_string
     logical :: GIP_switches(20)
     INTEGER :: idump_GIP
     INTEGER :: it
 
     REAL(kind=8) :: potential_field(81,97)
+    REAL(kind=8) :: ed1(81,97)
+    REAL(kind=8) :: ed2(81,97)
 
     REAL(kind=8) :: dynamo_sigma_phph_dsi(81,97), &
             dynamo_sigma_lmlm_msi(81,97), &
@@ -285,11 +276,6 @@ SUBROUTINE gip_init(first_call_of_plasma,GIP_switches,iday,uthr,f107, &
                     therm_model_n2plus_density, therm_model_nplus_density, &
                     therm_model_Te, therm_model_Ti1, therm_model_Ti2
 
-      logical first_call_of_plasma
-
-!sw_feedback_electrodynamic_efields = .false.
-sw_feedback_electrodynamic_efields = .true.
-
 !
 
      iday_number            = iday
@@ -317,15 +303,7 @@ sw_feedback_electrodynamic_efields = .true.
     i_call_polar = 1
     i_call_plasma = 1
 
-    call init_cons               ! done only once
-    call init_heelis             ! done only once
-
     CALL GLOBAL_IONOSPHERE_PLASMASPHERE ( &
-         IN, &
-         first_call_of_plasma, &
-         sw_feedback_electrodynamic_efields, &
-         hours_string, &
-         mins_string, &
          GIP_switches, &
          i_call_polar,i_call_plasma, &
          idump_GIP, &
@@ -335,7 +313,7 @@ sw_feedback_electrodynamic_efields = .true.
          universal_time_seconds, &
          geo_grid_longitudes_degrees,geo_grid_latitudes_degrees, &
          ex2d,ey2d, &
-         potential_field, &
+         potential_field,ed1,ed2, &
          f107, &
          o_density_fixed_ht,o2_density_fixed_ht,n2_density_fixed_ht, &
          NO_density_fixed_ht, &
@@ -351,9 +329,7 @@ sw_feedback_electrodynamic_efields = .true.
          NmF2,HmF2_km,TEC,Te_400,Ti_400,this_Ne_profile, &
          dynamo_sigma_phph_dsi,dynamo_sigma_lmlm_msi, &
          dynamo_sigma_h,dynamo_sigma_c, &
-         dynamo_Kdmph_dsi,dynamo_Kdmlm, &
-         V_upwards_at_apex_electrodynamics, &
-         vpeq_saved)
+         dynamo_Kdmph_dsi,dynamo_Kdmlm)
 
     call INTERFACE__GIP_to_thermosphere ( &
          thermospheric_model_name , therm_model_ht_dim , therm_model_lat_dim , therm_model_lon_dim, &
@@ -376,9 +352,6 @@ end SUBROUTINE gip_init
 
 
 SUBROUTINE GIP_CALCULATION ( &
-                              first_call_of_plasma, &
-                              hours_string, &
-                              mins_string, &
                               GIP_switches, &
                               GIP_input_dataset, &
                               GIP_output_dataset, &
@@ -407,6 +380,9 @@ SUBROUTINE GIP_CALCULATION ( &
                               therm_model_qn2p_aurora, &
                               therm_model_qnp_aurora, &
                               therm_model_qtef_aurora, &
+                              potential_field, &
+                              ed1, &
+                              ed2, &
                               iday_number, &
                               UT_hours, &
                               f107, &
@@ -427,9 +403,7 @@ SUBROUTINE GIP_CALCULATION ( &
                               dynamo_sigma_c, &
                               dynamo_Kdmph_dsi, &
                               dynamo_Kdmlm, &
-                              ne_high_res_fixed, &
-                              nmf2, &
-                              tec)
+                              ne_high_res_fixed)
 
     implicit none
 
@@ -469,7 +443,8 @@ SUBROUTINE GIP_CALCULATION ( &
                   therm_model_Te, therm_model_Ti1, therm_model_Ti2
 
     REAL(kind=8) :: potential_field(81,97)
-    REAL(kind=8) :: V_upwards_at_apex_electrodynamics(80,67)
+    REAL(kind=8) :: ed1(81,97)
+    REAL(kind=8) :: ed2(81,97)
 
     REAL(kind=8) :: dynamo_sigma_phph_dsi(81,97), &
             dynamo_sigma_lmlm_msi(81,97), &
@@ -541,31 +516,22 @@ SUBROUTINE GIP_CALCULATION ( &
     REAL(kind=8) :: Ti1_high_res_fixed(interface_hts,91,90)
     REAL(kind=8) :: Ti2_high_res_fixed(interface_hts,91,90)
 
-    logical first_call_of_plasma
+    if (.false.) then
+    print *, therm_model_vz
+    endif
 
     polar = .TRUE.
     plasma = .TRUE.
 
     universal_time_seconds = UT_hours * 3600.
 
-!   UT_hours_part_integer = int(universal_time_seconds/3600.)
-!   UT_mins_part_integer = nint((((universal_time_seconds/3600.) - real(UT_hours_part_integer)) * 60.))
-!
-!   if ( UT_hours_part_integer < 10 ) then
-!     write(hours_string,fmt='(i1)') UT_hours_part_integer
-!     hours_string = '0' // hours_string
-!   else
-!     write(hours_string,fmt='(i2)') UT_hours_part_integer
-!   endif
-!
-!   if ( UT_mins_part_integer < 10 ) then
-!     write(mins_string,fmt='(i1)') UT_mins_part_integer
-!     mins_string = '0' // mins_string
-!   else
-!     write(mins_string,fmt='(i2)') UT_mins_part_integer
-!   endif
-!
-!   write(6,*) '********* GIP CALLED AT ' // hours_string // ':' // mins_string // ' UT *********'
+    UT_hours_part_integer = int(universal_time_seconds/3600.)
+    UT_mins_part_integer = nint((((universal_time_seconds/3600.) - real(UT_hours_part_integer)) * 60.))
+
+    write(hours_string,fmt='(i12.2)') UT_hours_part_integer
+    write(mins_string,fmt='(i12.2)') UT_mins_part_integer
+
+    write(6,*) '********* GIP CALLED AT ' // hours_string // ':' // mins_string // ' UT *********'
 
 !      
     i_call_polar = 0    ! not necessary since at least the polar region is done
@@ -599,11 +565,6 @@ SUBROUTINE GIP_CALCULATION ( &
     ey2d(:,:) = ely_fixed_ht(10,:,:)
 
     CALL GLOBAL_IONOSPHERE_PLASMASPHERE ( &
-         IN, &
-         first_call_of_plasma, &
-         sw_feedback_electrodynamic_efields, &
-         hours_string, &
-         mins_string, &
          GIP_switches, &
          i_call_polar,i_call_plasma, &
          idump_GIP, &
@@ -613,7 +574,7 @@ SUBROUTINE GIP_CALCULATION ( &
          universal_time_seconds, &
          geo_grid_longitudes_degrees,geo_grid_latitudes_degrees, &
          ex2d,ey2d, &
-         potential_field, &
+         potential_field,ed1,ed2, &
          f107, &
          o_density_fixed_ht,o2_density_fixed_ht,n2_density_fixed_ht, &
          NO_density_fixed_ht, &
@@ -629,10 +590,9 @@ SUBROUTINE GIP_CALCULATION ( &
          NmF2,HmF2_km,TEC,Te_400,Ti_400,this_Ne_profile, &
          dynamo_sigma_phph_dsi,dynamo_sigma_lmlm_msi, &
          dynamo_sigma_h,dynamo_sigma_c, &
-         dynamo_Kdmph_dsi,dynamo_Kdmlm, &
-         V_upwards_at_apex_electrodynamics, &
-         vpeq_saved)
+         dynamo_Kdmph_dsi,dynamo_Kdmlm)
 
+!     write(6,*) '2/3 done'
 
     call INTERFACE__GIP_to_thermosphere ( &
          thermospheric_model_name , therm_model_ht_dim , therm_model_lat_dim , therm_model_lon_dim, &
@@ -646,7 +606,7 @@ SUBROUTINE GIP_CALCULATION ( &
          therm_model_n2plus_density,therm_model_nplus_density, &
          therm_model_Te,therm_model_Ti1,therm_model_Ti2)
 
-
+!     write(6,*) 'All done'
 
 !
     return
@@ -678,11 +638,6 @@ end SUBROUTINE gip_calculation
 
 
 SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
-         in, &
-         first_call_of_plasma, &
-         sw_feedback_electrodynamic_efields, &
-         hours_string, &
-         mins_string, &
          GIP_switches, &
          i_call_polar,i_call_plasma, &
          idump, &
@@ -692,7 +647,7 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
          universal_time_seconds, &
          geo_grid_longitudes_degrees,geo_grid_latitudes_degrees, &
          ex2d,ey2d, &
-         potential_field, &
+         potential_field,ed1,ed2, &
          f107, &
          o_density_fixed_ht,o2_density_fixed_ht,n2_density_fixed_ht, &
          NO_density_fixed_ht, &
@@ -708,9 +663,7 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
          NmF2,HmF2_km,TEC,Te_400,Ti_400,this_Ne_profile, &
          dynamo_sigma_phph_dsi,dynamo_sigma_lmlm_msi, &
          dynamo_sigma_h,dynamo_sigma_c, &
-         dynamo_Kdmph_dsi,dynamo_Kdmlm, &
-         V_upwards_at_apex_electrodynamics, &
-         vpeq_saved)
+         dynamo_Kdmph_dsi,dynamo_Kdmlm)
 
 
 
@@ -726,11 +679,8 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
   LOGICAL :: sw_initialisation_call
   LOGICAL :: sw_reset_GIP_ion_densities_on_startup
   LOGICAL :: GIP_switches(20)
-  LOGICAL :: sw_feedback_electrodynamic_efields
   character(100) :: GIP_input_dataset
   character(100) :: GIP_output_dataset
-  character(2) :: hours_string
-  character(2) :: mins_string
   INTEGER :: istop
   INTEGER :: iday_number 
   INTEGER :: i_total_no_days , i_graphics_out_start , i_no_day, &
@@ -757,15 +707,12 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
   REAL(kind=8) dynamo_Kdmlm(NMP+1,N_DYN_LAT)
   REAL(kind=8) universal_time_seconds
   REAL(kind=8) :: potential_field(NMP+1,N_DYN_LAT)
+  REAL(kind=8) :: ed1(NMP+1,N_DYN_LAT)
+  REAL(kind=8) :: ed2(NMP+1,N_DYN_LAT)
   REAL(kind=8) Tn_plasma_input_3d(npts,nmp)
   REAL(kind=8) O_plasma_input_3d(npts,nmp)
   REAL(kind=8) O2_plasma_input_3d(npts,nmp)
   REAL(kind=8) N2_plasma_input_3d(npts,nmp)
-  INTEGER IN(nmp,nlp)
-  REAL(kind=8) V_upwards_at_apex_electrodynamics(nmp,nlp)
-  REAL(kind=8) vpeq_saved(nmp,nlp)
-  REAL(kind=8) vzon_saved(nmp,nlp)
-  REAL(kind=8) vpeq_to_save(nmp,nlp)
 
   REAL(kind=8) NO_plasma_input_3d(npts,nmp)
   REAL(kind=8) N4S_plasma_input_3d(npts,nmp)
@@ -865,17 +812,11 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
   REAL(kind=8) :: high_lat_time_step_seconds
   REAL(kind=8) :: plasma_time_step_seconds
 
-  logical first_call_of_plasma
-
   PARAMETER (PI=3.14159,DTR=PI/180.0)
 
-  INTEGER eldyn_iyr
-  INTEGER eldyn_iday
-  REAL(kind=8) eldyn_secs1
-  real*8 :: sunlons(1)
-  character(len=15) :: potential_model
-  parameter(potential_model = 'HEELIS')
-  integer :: ilat_dySH, ilat_dyNH, k, ithis
+  if (.false.) then
+  print *, hmf2_km, nmf2, Te_400, TEC, this_Ne_profile, Ti_400
+  endif
 
 ! set a few switches here to not bother the outside folks...
 !
@@ -930,10 +871,11 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
 
       WRITE(6,*) '**************** GIP INITIALISATION CALL ******************* '
 
+      i_first_call_of_plasma = 1
       write(6,*) '******** reading GIP startup file ********'
 
-      sw_reset_GIP_ion_densities_on_startup = .FALSE.
-!     sw_reset_GIP_ion_densities_on_startup = .TRUE.
+!     sw_reset_GIP_ion_densities_on_startup = .FALSE.
+      sw_reset_GIP_ion_densities_on_startup = .TRUE.
       IF(sw_reset_GIP_ion_densities_on_startup) then
 
          d13d(:,:,:,:) = 1.e9
@@ -967,12 +909,13 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
          call IO__read_gip_netcdf_history(GIP_input_dataset, &
                                       ni_plasma,vi_plasma,ne_plasma,ti_plasma,te_plasma, &
                                       no_plus_3d,o2_plus_3d,d13d,d23d,v13d,v23d, &
-                                      vpeq_saved,vzon_saved, &
+                                      vpeq,vzon, &
                                       Oplus_density_fixed_ht_com,Hplus_density_fixed_ht_com, &
                                       NOplus_density_fixed_ht_com,O2plus_density_fixed_ht_com, &
                                       N2plus_density_fixed_ht_com,Nplus_density_fixed_ht_com, &
                                       Te_fixed_ht_com,Ti1_fixed_ht_com,Ti2_fixed_ht_com, &
                                       Ne_density_fixed_ht_com)
+
       endif
 
       write(6,*) '******** finished reading GIP startup file ********'
@@ -1164,14 +1107,12 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
       endif
 
       CALL ML__MID_AND_LOW_LATITUDE_IONOSPHERE ( &
-      first_call_of_plasma, &
-      sw_feedback_electrodynamic_efields, &
       GIP_switches, &
           geo_grid_longitudes_degrees,geo_grid_longitudes_radians, &
           geo_grid_latitudes_degrees,geo_grid_latitudes_radians, &
           geo_grid_colatitudes_degrees,geo_grid_colatitudes_radians, &
       iday_number, &
-      universal_time_seconds,plasma_time_step_seconds, &
+      i_first_call_of_plasma,universal_time_seconds,plasma_time_step_seconds, &
       idump,ioutput_counter,ioutput_high_res_counter,iplasma_call_frequency_mins, &
       ioutput_frequency_mins,ioutput_high_res_frequency_mins, &
       i_no_day,i_graphics_out_start, &
@@ -1197,8 +1138,12 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
       dynamo_sigma_phph_dsi,dynamo_sigma_lmlm_msi, &
       dynamo_sigma_h,dynamo_sigma_c, &
       dynamo_Kdmph_dsi,dynamo_Kdmlm, &
-      potential_field, &
-      vpeq,vzon,V_upwards_at_apex_electrodynamics,vpeq_saved)
+      potential_field,ed1,ed2, &
+      vpeq,vzon)
+
+
+      i_first_call_of_plasma = 0
+        !write(6,*) '*********************** HERE 5 *******************',sw_initialisation_call
 
 
       CALL INTERFACE__MID_LAT_IONOSPHERE_to_FIXED_GEO( &
@@ -1237,52 +1182,28 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
                      NOplus_density_fixed_ht_com,O2plus_density_fixed_ht_com, &
                      N2plus_density_fixed_ht_com,Nplus_density_fixed_ht_com, &
                      Ne_density_fixed_ht_com)
-          call INTERFACE__calculate_NMF22( &
-                     Ne_density_fixed_ht_com, Te_fixed_ht_com, Ti1_fixed_ht_com, &   
-                     NmF2,HmF2_km,TEC,Te_400,Ti_400,this_Ne_profile)
 
-
-
-    call CALL_DYNAMO_CALCULATE_V_UPWARDS_AT_APEX( &
-                        IN, &
-                        iday_number,universal_time_seconds, &
-                        hours_string,mins_string, &
-                        dynamo_sigma_phph_dsi, dynamo_sigma_lmlm_msi, &
-                        dynamo_sigma_h, dynamo_sigma_c, &
-                        dynamo_Kdmph_dsi, dynamo_Kdmlm, &
-                        midpoint,apex_be3,apex_e1,apex_e2, &                       
-                        V_upwards_at_apex_electrodynamics)
-
-                 write(185,*) 'sw_feedback_electrodynamic_efields ', sw_feedback_electrodynamic_efields                                        
-                 write(185,7617) universal_time_seconds, V_upwards_at_apex_electrodynamics(1,20)      
-                 7617 format('CALLED DYNAMO ',2f7.1)
-
-      vpeq_to_save = V_upwards_at_apex_electrodynamics
-
-      write(185,*) 'vpeq_to_save ', Vpeq_to_save(1,20)
-
-
-      endif    ! if ( .NOT. sw_initialisation_call ) then
+      endif
 
 
 !g
 !g If we are at the end of the run then we need to write out the '.gip' file......
 !g
   if(idump == 1) then
-      write(185,*) '******** writing GIP startup file ********'
+      write(6,*) '******** writing GIP startup file ********'
 
 
         call IO__write_gip_netcdf_history(GIP_output_dataset, &
                                       ni_plasma,vi_plasma,ne_plasma,ti_plasma,te_plasma, &
                                       no_plus_3d,o2_plus_3d,d13d,d23d,v13d,v23d, &
-                                      vpeq_to_save,vzon, &
+                                      vpeq,vzon, &
                                       Oplus_density_fixed_ht_com,Hplus_density_fixed_ht_com, &
                                       NOplus_density_fixed_ht_com,O2plus_density_fixed_ht_com, &
                                       N2plus_density_fixed_ht_com,Nplus_density_fixed_ht_com, &
                                       Te_fixed_ht_com,Ti1_fixed_ht_com,Ti2_fixed_ht_com, &
                                       Ne_density_fixed_ht_com)
 
-      write(185,*) '******** finished writing GIP startup file ********'
+      write(6,*) '******** finished writing GIP startup file ********'
   endif
 
   return
@@ -2610,6 +2531,11 @@ IMPLICIT NONE
     INTEGER :: ilon_west
     INTEGER :: ilon_east
 
+  if (.false.) then
+  print *, thermospheric_model_name
+  endif 
+
+
     therm_geo_long(:) = therm_geo_long_input(:)
 
     do ilon = 1 , lon_dim
@@ -3058,7 +2984,7 @@ SUBROUTINE INTERFACE__FIXED_GEO_to_MID_LAT_IONOSPHERE( &
   REAL(kind=8) geo_grid_latitudes_degrees(N_Latitudes)
   REAL(kind=8) small_power,small_number
   small_power = -20.
-  small_number = 1.d-20
+  small_number = 1.E-20
 
   sw_External_model_provides_NO_N4S_densities = GIP_switches(5) 
 
@@ -3075,6 +3001,10 @@ SUBROUTINE INTERFACE__FIXED_GEO_to_MID_LAT_IONOSPHERE( &
   !write(6,*) '************************************'
   !write(6,*) 'lats ',geo_grid_latitudes_degrees
   !write(6,*) '************************************'
+
+if (.false.) then
+  print *, IWRite2, te_plasma_input_3d, telec
+endif 
 
 !g
   iwrite1 = 0
@@ -3418,6 +3348,10 @@ SUBROUTINE INTERFACE__FIXED_GEO_to_MID_LAT_IONOSPHERE( &
               dN2D22 = (((dN2Du22-dN2Dl22)*fach)+dN2Dl22)
           endif
           !g
+!              if(.not. sw_1st_call_int_fixed_ht) then
+!               write(6,*) 'YYYYYY',ou11,ol11,fach
+!               write(6,*) 'yabs 1',o11,fach
+!              endif
               if(o11 > small_power) then
                   o11=10**o11
               else
@@ -4823,82 +4757,6 @@ end SUBROUTINE INTERFACE__calculate_NMF2_HMF2_TEC_etc
 
 
 
-SUBROUTINE INTERFACE__calculate_NMF22 ( &
-                     Ne_density_fixed_ht_com, Te_fixed_ht_com, Ti1_fixed_ht_com, &
-                     NmF2,HmF2_km,TEC,Te_400,Ti_400,this_Ne_profile)
-
-
-  IMPLICIT NONE
-
-  REAL(kind=8), intent(in) :: Ne_density_fixed_ht_com(interface_hts,91,90)
-  REAL(kind=8), intent(in) :: Te_fixed_ht_com(interface_hts,91,90)
-  REAL(kind=8), intent(in) :: Ti1_fixed_ht_com(interface_hts,91,90)
-  REAL(kind=8), intent(out) :: NmF2(91,90)
-  REAL(kind=8), intent(out) :: HmF2_km(91,90)
-  REAL(kind=8), intent(out) :: TEC(91,90)
-  REAL(kind=8), intent(out) :: Te_400(91,90)
-  REAL(kind=8), intent(out) :: Ti_400(91,90)
-
-  REAL(kind=8), intent(out) :: this_Ne_profile(interface_hts)
-
-!   INTEGER, intent(out) :: NmF2_index_array(91,90)
-  INTEGER :: NmF2_index_array(91,90)
-  REAL(kind=8)  :: NE_1d(interface_hts)
-  REAL(kind=8)  :: a , b , c 
-  REAL(kind=8)  :: x1 , x2 , x3 , y1 , y2 , y3 , x 
-  INTEGER :: m , l , iheight , max_position(1) , NmF2_index
-  INTEGER :: iht, max_position2
-
-
-  this_Ne_profile(:) = Ne_density_fixed_ht_com(:,66,31)
-
-  DO 1250 l = 1 , 90
-!      DO 1220 m = 1 , 91
-      DO 1220 m = 3 , 89
-
-          NE_1d(:) = Ne_density_fixed_ht_com(:,m,l)
-
-          max_position = maxloc(NE_1d)
-
-          NmF2_index = max_position(1)
-          NmF2_index_array(m,l) = NmF2_index
-
-
-          x2 = fixed_heights_km(NmF2_index)
-          x1 = x2 - 5.
-          x3 = x2 + 5.
-          y2 = NE_1d(NmF2_index)
-          y1 = NE_1d(NmF2_index-1)
-          y3 = NE_1d(NmF2_index+1)
-
-          a  = (y1*x3 - y2*x3 - y1*x2 - y3*x1 + y2*x1 + y3*x2 ) / &
-               (x2*x2*x1 - x3*x3*x1 + x3*x3*x2 - x2*x2*x3 + x1*x1*x3 - x1*x1*x2)
-
-          b = (y1 - y2 - a*(x1*x1 - x2*x2)) / (x1 - x2)
-
-          c = y1 - a*x1*x1 - b*x1
-
-          x = -b / (2 * a)
-
-          hmF2_km(m,l) = x
-          NmF2(m,l) = (a * x * x) + (b * x) + c
-
-          TEC(m,l) = 0.0
-          DO iheight = 1,interface_hts - 1
-              TEC(m,l) = TEC(m,l) + (((NE_1d(iheight+1)+NE_1d(iheight))/2.0) * &
-              (fixed_heights_km(iheight+1) - fixed_heights_km(iheight))*1000.)
-          enddo
-
-          Te_400(m,l) = Te_fixed_ht_com(19,m,l)
-          Ti_400(m,l) = Ti1_fixed_ht_com(19,m,l)
-
-      1220 ENDDO
-  1250 ENDDO
-
-  return
-
-end SUBROUTINE INTERFACE__calculate_NMF22
-
 
 SUBROUTINE IO__read_apex_mag_field_coords( &
   ETA_Apex_3D, &
@@ -4956,6 +4814,10 @@ SUBROUTINE IO__read_apex_mag_field_coords( &
   integer ijump , iwrite_binary_to_114
 
   PARAMETER (PI=3.141592654,DTR=PI/180.0,R0=6.370E06)
+
+  if (.false.) then
+  print *, iday_number
+  endif
 
   write(6,*) '******* Reading in APEX mag field parameters for GIP *******'
 
@@ -5312,6 +5174,9 @@ SUBROUTINE IO__read_gip_netcdf_history(filename, &
              Te_fixed_ht_com,Ti1_fixed_ht_com,Ti2_fixed_ht_com, &
              Ne_density_fixed_ht_com)
 
+
+!     include 'netcdf.inc'
+
       character(len=*),intent(in) :: filename
       integer :: ncid,istat,id
       integer :: id_npts, id_nmp, id_nlp, id_which_ion, id_highlat_hts, &
@@ -5404,7 +5269,6 @@ SUBROUTINE IO__read_gip_netcdf_history(filename, &
 
       istat = nf_inq_varid(ncid,"vpeq",id)
       istat = nf_get_var_double(ncid,id,vpeq)
-      write(185,*) 'VPEQ_SAVED ', vpeq(1,20)
 !     write(6,"('read_hist: vpeq min,max=',2e12.4)") &
 !       minval(vpeq),maxval(vpeq)
 
@@ -5554,7 +5418,7 @@ CLOSE(140)
 Hden2(:,1:9,:,:) = Hden(:,1:9,:,:)
 Hden2(:,10,:,:) = Hden2(:,1,:,:)
 
-myday = dble(iday_of_the_year_input)
+myday = float(iday_of_the_year_input)
 myf107 = F107_input
 
 if (myf107.lt.80.) myf107 = 80.
@@ -5854,6 +5718,10 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
 !g
   data mlow /14,16,18,20,22,24,25,25,23,21,20,17,15,13,12,12,12,12,12,13/
   data mhigh /75,75,75,76,76,76,76,76,76,76,76,75,74,73,71,69,70,71,73,74/
+
+  if (.false.) then
+  print *, geo_grid_colatitudes_degrees, ihigh_lat_call_frequency_mins
+  endif
 
   if(sw_initialisation_call) then
 
@@ -6379,6 +6247,12 @@ SUBROUTINE HL__HIGH_LAT_IONS( &
   REAL(kind=8) :: geo_grid_longitudes_degrees(20)
 
   INTEGER :: i_diagnose
+
+  if (.false.) then
+  print *, file_res, geo_grid_longitudes_degrees, hprof, iout_high, ioutput, ipint, ipint_high, qnp_aurora_1d, qtef_aurora_1d, ti1_dum
+  endif
+
+
   i_diagnose = 0 
   if(i_diagnose == 1) write(6,*) ' mneut lneut ', mneut,lneut
 
@@ -6442,7 +6316,7 @@ if (i_diagnose == 1) write(6,*) 'here 3'
        
  atomic_hydrogen_density(i) = atomic_hydrogen_density_new(i)
 
-3421 format(3i4,f9.0,2e12.4)
+!3421 format(3i4,f9.0,2e12.4)
  enddo
 
 !
@@ -6738,17 +6612,22 @@ SUBROUTINE HL__TRIDIAG(SUB,DIAg,SUP,RHS,M,ANS)
   DIMENSION SUB(90) , DIAg(90) , SUP(90) , RHS(90) , ANS(90)
   DO 100 i = 3 , M
       i1 = i - 1
+  ! write(6,*) 'yaargh ',i1,diag(i1)
       x = SUB(i)/DIAg(i1)
+  ! write(6,*) 'diag 1 ',i,diag(i),x,sup(i1)
       DIAg(i) = DIAg(i) - x*SUP(i1)
       if(diag(i) == 0.0) then
           diag(i) = diag(i-1)
           write(6,*) 'using this fix..... '
       endif
+  ! write(6,*) 'diag 2 ',i,diag(i)
       RHS(i) = RHS(i) - x*RHS(i1)
   100 ENDDO
+! write(6,*) 'yaargh2 ',m,diag(m)
   ANS(M) = RHS(M)/DIAg(M)
   DO 200 i = 1 , M - 2
       j = M - i
+  ! write(6,*) 'yaargh3 ',j,diag(j)
       ANS(j) = (RHS(j)-SUP(j)*ANS(j+1))/DIAg(j)
   200 ENDDO
   RETURN
@@ -7048,6 +6927,10 @@ SUBROUTINE HL__WINDIF(VX,VY,VZ,DIP,VIX,VIY,VIZ,Nhgt,COSi,U2Dif,UCOs, &
   REAL(kind=8) :: AGR , AGT , AGP , sin_decl , cos_decl , sini
   INTEGER :: j , Nhgt
 
+  if (.false.) then
+  print *, agr, agt, agp
+  endif
+
 ! calculate wind difference
 
   DO 100 j = 1 , Nhgt
@@ -7141,21 +7024,19 @@ SUBROUTINE HL__PREVIOUS_POSITION_CALC_INDEXES(TH_stepped_back_radians,PHI_steppe
    adif = MOD(NINT(PHI_stepped_back_radians*RTD),NINT(360.))
    IF ( adif < 0.0 ) adif = adif + 360.
    ry = adif/18. + 1.E-06
-   iy = ry
-   ry = ry - iy
+   iy = int(ry)
+  !  ry = ry - iy
    iy1 = iy + 1
    IF ( iy1 == 21 ) iy1 = 1
    iy2 = iy1 + 1
    IF ( iy2 == 21 ) iy2 = 1
 
   IF ( iy1 < 1 .OR. iy1 > 20 ) WRITE(6,99002) iy1
-  99002 FORMAT ('0',10x, &
-  'array index out of bounds in high-lat ionosphere,  iy1=', &
-  i5)
+  99002 FORMAT ('0',10x, 'array index out of bounds in high-lat ionosphere,  iy1=', i5)
 
    rx = 90. - TH_stepped_back_radians/dth_radians
-   ix = rx + 1.E-06
-   rx = rx - ix
+   ix = int(rx + 1.E-06)
+  !  rx = rx - ix
    ix = ix + 1
    ix1 = ix
    ix2 = ix1 + 1
@@ -7311,9 +7192,9 @@ SUBROUTINE HL__ION_TEMP_HIGH_LAT(TN,TE,N1,N2,TI,CF1n,RTTin,TINlog, &
   DO 100 l = 1 , Nhgt
       u2 = U2Dif(l)*1.0E4
 
-      if(o(l) < 1.d-50) o(l)=1.d-50
-      if(o2(l) < 1.d-50) o2(l)=1.d-50
-      if(nit(l) < 1.d-50) nit(l)=1.d-50
+      if(o(l) < 1.E-50) o(l)=1.E-50
+      if(o2(l) < 1.E-50) o2(l)=1.E-50
+      if(nit(l) < 1.E-50) nit(l)=1.E-50
       cf1nk1 = 3.42E-17*O(l)*factor
       cf1nk2 = 6.66E-16*O2(l)
       cf1nk3 = 6.82E-16*NIT(l)
@@ -7407,6 +7288,10 @@ SUBROUTINE HL__ION_NEUTRAL_COLLISIONS(P1,P2,P3,PI1,PI2,PI3,T,VIN,AMIn,NMAx,iout)
   DATA a/3.42E-11 , 6.66E-10 , 6.82E-10/
   DATA b/2.44E-10 , 4.28E-10 , 4.34E-10/
   amu = 1.66E-27
+
+  if (.false.) then
+  print *, iout
+  endif
 !c  **
 !c  **
   factor=1.0
@@ -7764,20 +7649,21 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION(n_array_size,i1,i2,o,o2,n2,Solar_Declinatio
   REAL(kind=8) :: pye,dtr,Solar_Declination_Angle_degrees,f107,cschi,chid,csfye,emtau, &
   emtau_tot
   REAL(kind=8) :: O,O2,N2,peuvi,time,gcol,sf,chi,w,f107a1,f107a2
-  REAL(kind=8) :: p_night_o , p_night_o2 , p_night_n2
-  PARAMETER (p_night_o=1.0E-17, p_night_o2=2.0E-17,p_night_n2=1.8E-17)
+  REAL(kind=8) :: pngt , pngto2 , pngtn2
   PARAMETER(PYE=3.14159)
   PARAMETER(DTR=PYE/180.)
 
+  PARAMETER (PNGT=1.0E-17, &
+  PNGTO2=2.0E-17,PNGTN2=1.8E-17)
 
-! PARAMETER (p_night_o=1.0E-23, &
-!   p_night_o2=2.0E-23,p_night_n2=1.8E-23)
+! PARAMETER (PNGT=1.0E-23, &
+!   PNGTO2=2.0E-23,PNGTN2=1.8E-23)
 
-! PARAMETER (p_night_o=1.0E-26, &
-!   p_night_o2=2.0E-26,p_night_n2=1.8E-26)
+! PARAMETER (PNGT=1.0E-26, &
+!   PNGTO2=2.0E-26,PNGTN2=1.8E-26)
 
-! PARAMETER (p_night_o=0.0, &
-!   p_night_o2=0.0,p_night_n2=0.0)
+! PARAMETER (PNGT=0.0, &
+!   PNGTO2=0.0,PNGTN2=0.0)
 
   SAVE CSIO,CSIO2,CSIN2,CSIHE,MM,PO,PO2,PN2,PHE,SF
 
@@ -7874,9 +7760,9 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION(n_array_size,i1,i2,o,o2,n2,Solar_Declinatio
 
   ! FOR DAYTIME PRODUCTION
 
-      if(o(i) < 1.d-50) o(i)=1.d-50
-      if(o2(i) < 1.d-50) o2(i)=1.d-50
-      if(n2(i) < 1.d-50) n2(i)=1.d-50
+      if(o(i) < 1.E-50) o(i)=1.E-50
+      if(o2(i) < 1.E-50) o2(i)=1.E-50
+      if(n2(i) < 1.E-50) n2(i)=1.E-50
       CSFYE=COS(PYE*(TIME(I)/43200.-1.))
       CSCHI(I)=Sin(Solar_declination_Angle_degrees * DTR)*COS(GCOL(I)) &
       +Cos(Solar_declination_Angle_degrees * DTR)*SIN(GCOL(I))*CSFYE
@@ -7903,7 +7789,7 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION(n_array_size,i1,i2,o,o2,n2,Solar_Declinatio
       DO 10 K=1,32
           PEUVI(I,1)=PEUVI(I,1)+PO(K)*EMTAU(K)
       10 ENDDO
-      PEUVI(I,1)=(PEUVI(I,1)+p_night_o)*O(I)
+      PEUVI(I,1)=(PEUVI(I,1)+pngt)*O(I)
 
   !--HE+ PHOTOIONIZATION RATE ( WAVELENGTHS .LT. 504 A )
 
@@ -7925,7 +7811,7 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION(n_array_size,i1,i2,o,o2,n2,Solar_Declinatio
       DO 40 K=1,29
           PEUVI(I,4)=PEUVI(I,4)+PN2(K)*EMTAU(K)
       40 ENDDO
-      PEUVI(I,4)=(PEUVI(I,4)+p_night_n2)*N2(I)
+      PEUVI(I,4)=(PEUVI(I,4)+pngtn2)*N2(I)
   ! ENDIF
 
   !--O2+ PHOTOIONIZATION RATE ( WAVELENGTHS .LT. 1050 A )
@@ -7934,7 +7820,7 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION(n_array_size,i1,i2,o,o2,n2,Solar_Declinatio
       DO 50 K=1,37
           PEUVI(I,5)=PEUVI(I,5)+PO2(K)*EMTAU(K)
       50 ENDDO
-      PEUVI(I,5)=(PEUVI(I,5)+p_night_o2)*O2(I)
+      PEUVI(I,5)=(PEUVI(I,5)+pngto2)*O2(I)
   ! ENDIF
   ! if(iout.eq.1) then
   ! write(6,2424) i,peuvi(i,1),o(i)
@@ -8052,6 +7938,10 @@ SUBROUTINE HL_ML__MOLECULAR_IONS_ON_TUBES( &
   INTEGER :: ifail , n , nc , l
   LOGICAL :: scale
   COMPLEX*16 :: cp
+
+  if (.false.) then
+  print *, n2d_number_density_m3
+  endif
 
 
   sw_External_model_provides_NO_N4S_densities = GIP_switches(5)
@@ -8314,15 +8204,15 @@ SUBROUTINE HL_ML__MOLECULAR_IONS_ON_TUBES( &
 1500 continue
 
   RETURN
-  99001 FORMAT (1x,'p is negative')
-  99002 FORMAT (1x,1P6e12.4)
-  99003 FORMAT (1x,'q is negative')
-  99004 FORMAT (1x,1P5e12.4)
-  99005 FORMAT (1x,i3,1P5e12.4)
+!  99001 FORMAT (1x,'p is negative')
+!  99002 FORMAT (1x,1P6e12.4)
+!  99003 FORMAT (1x,'q is negative')
+!  99004 FORMAT (1x,1P5e12.4)
+!  99005 FORMAT (1x,i3,1P5e12.4)
   99006 FORMAT (1x,'no root found in molion')
   99007 FORMAT (1x,'ifail = ',i2)
-  99008 FORMAT (1x,1P15e8.1)
-  99009 FORMAT (1x,1P15e8.1,'ELECTRON_density_cm3 neg')
+!  99008 FORMAT (1x,1P15e8.1)
+!  99009 FORMAT (1x,1P15e8.1,'ELECTRON_density_cm3 neg')
 
 
 
@@ -8410,9 +8300,8 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION_2(npts, low_level, top_level, O_ndensity_1d
     REAL(kind=8) :: csza(npts)  ! cos(solar zenith angle (radians))
 
     ! Night time ionisation factors
-    REAL(kind=8) :: p_night_o , p_night_o2 , p_night_n2
-!    PARAMETER (p_night_o=1.0E-17, p_night_o2=2.0E-17,p_night_n2=1.8E-17)
-    PARAMETER (p_night_o=1.0E-15, p_night_o2=2.0E-15,p_night_n2=1.8E-15)
+    REAL(kind=8) :: pngt , pngto2 , pngtn2
+    PARAMETER (PNGT=1.0E-17, PNGTO2=2.0E-17,PNGTN2=1.8E-17)
 
     ! NWAVES is the total number of wavelength bands.
     ! The arrays are populated as
@@ -8498,6 +8387,9 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION_2(npts, low_level, top_level, O_ndensity_1d
          CSIO2, FLUX, WAVELS, lyman_a_flux,                             &
          lyman_a_num, NWAVES_EUV, NWAVES_SRC, NWAVES_XRAY
 
+    if (.false.) then
+    print *, eccentric, r0
+    endif
 
     fmxfmn=(F107-71.)/(220-71.)
 
@@ -8506,7 +8398,7 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION_2(npts, low_level, top_level, O_ndensity_1d
 
     ! Ratio of nightime ionisation to sec=1. This is to represent ionisation by
     ! Galactic cosmic rays
-!    nightfac=1.e-6
+    !nightfac=1.e-6
     ! ald: taking out night facor and using CTIPe night time ionisation rates
     nightfac=0.
 
@@ -8644,13 +8536,9 @@ SUBROUTINE HL_ML__EUV_ION_PRODUCTION_2(npts, low_level, top_level, O_ndensity_1d
 
 
        !Ionisation rates(m-3s-1)
-!      PEUVO2(n) = ((PEUVO2_loc*rnight_o2)+p_night_o2)*O2_ndensity_1d(n)
-!      PEUVO(n)  = ((PEUVO_loc*rnight_o)+p_night_o)*O_ndensity_1d(n)
-!      PEUVN2(n) = ((PEUVN2_loc*rnight_n2)+p_night_n2)*N2_ndensity_1d(n)
-       write(6,*) 'HERE YAA 1'
-       PEUVO2(n) = PEUVO2_loc*O2_ndensity_1d(n)
-       PEUVO(n)  = PEUVO_loc*O_ndensity_1d(n)
-       PEUVN2(n) = PEUVN2_loc*N2_ndensity_1d(n)
+       PEUVO2(n) = ((PEUVO2_loc*rnight_o2)+PNGTO2)*O2_ndensity_1d(n)
+       PEUVO(n)  = ((PEUVO_loc*rnight_o)+PNGT)*O_ndensity_1d(n)
+       PEUVN2(n) = ((PEUVN2_loc*rnight_n2)+PNGTN2)*N2_ndensity_1d(n)
 
        ionisation_rates(n,1) = PEUVO(n)
        ionisation_rates(n,4) = PEUVN2(n)
@@ -9258,14 +9146,12 @@ end SUBROUTINE HL_ML__OPTICAL_DEPTH
 
 
 SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
-  first_call_of_plasma, &
-  sw_feedback_electrodynamic_efields, &
   GIP_switches, &
   geo_grid_longitudes_degrees,geo_grid_longitudes_radians, &
   geo_grid_latitudes_degrees,geo_grid_latitudes_radians, &
   geo_grid_colatitudes_degrees,geo_grid_colatitudes_radians, &
   iday_number, &
-  UT_in_seconds,plasma_time_step_seconds, &
+  i_first_call_of_plasma,UT_in_seconds,plasma_time_step_seconds, &
   idump,iout,iout_high_res,ipcall,ipint,ipint_high, &
   i_no_day,i_graphics_out_start, &
   file_res, &
@@ -9290,8 +9176,8 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
   dynamo_sigma_phph_dsi,dynamo_sigma_lmlm_msi, &
   dynamo_sigma_h,dynamo_sigma_c, &
   dynamo_Kdmph_dsi,dynamo_Kdmlm, &
-  potential_field, &
-  vpeq,vzon,V_upwards_at_apex_electrodynamics,vpeq_saved)
+  potential_field,ed1_from_dynamo,ed2_from_dynamo, &
+  vpeq,vzon)
 
 !*********************************************
 ! *
@@ -9309,7 +9195,7 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
 
   LOGICAL :: sw_initialisation_call
   LOGICAL :: GIP_switches(20)
-  LOGICAL :: sw_feedback_electrodynamic_efields
+  LOGICAL :: sw_External_model_provides_low_lat_E_fields 
   INTEGER :: IN(NMP,NLP) , IS(NMP,NLP)
   INTEGER :: IN_dum(NMP,NLP) , IS_dum(NMP,NLP)
   INTEGER :: i , j
@@ -9334,6 +9220,7 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
   INTEGER :: NDT
   INTEGER :: NIOns
   INTEGER :: midpoint(nlp)
+  INTEGER :: i_first_call_of_plasma
   INTEGER :: ITDay
   INTEGER :: in1
   INTEGER :: in2
@@ -9432,9 +9319,16 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
   REAL(kind=8) dynamo_Kdmph_dsi(NMP+1,N_DYN_LAT)
   REAL(kind=8) dynamo_Kdmlm(NMP+1,N_DYN_LAT)
   REAL(kind=8) potential_field(NMP+1,N_DYN_LAT)
+  REAL(kind=8) ed1_from_dynamo(NMP+1,N_DYN_LAT)
+  REAL(kind=8) ed2_from_dynamo(NMP+1,N_DYN_LAT)
   REAL(kind=8) dynamo_latitude(N_DYN_LAT)
   REAL(kind=8) potential_on_tubes(nmp,nlp)
-  REAL(kind=8) V_upwards_at_apex_electrodynamics(nmp,nlp)
+  REAL(kind=8) ed1_on_tube(nmp,nlp)
+  REAL(kind=8) ed2_on_tube(nmp,nlp)
+  REAL(kind=8) ve1
+  REAL(kind=8) ve2
+  REAL(kind=8) V_upwards_at_apex
+  REAL(kind=8) V_upwards_at_apex_array(nmp,nlp)
   REAL(kind=8) V_upwards_at_apex_empirical
   REAL(kind=8) local_time_apex(nmp,nlp)
   REAL(kind=8) magnitude_e2_at_300
@@ -9522,7 +9416,6 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
   REAL(kind=8) uperp_apex(npts)
   REAL(kind=8) Um_apex(npts)
   REAL(kind=8) vpeq(nmp,nlp)
-  REAL(kind=8) vpeq_saved(nmp,nlp)
   REAL(kind=8) vzon(nmp,nlp)
   REAL(kind=8) nuin_tot(npts)
   REAL(kind=8) nu_mol_n(npts)
@@ -9615,12 +9508,20 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
   real(kind=8) V_exb_north(npts,nmp)
   real(kind=8) V_exb_up(npts,nmp)
 
-  logical first_call_of_plasma
+  INTEGER i_attempt
+  INTEGER i_attempt_array(nmp,nlp)
 
-
-!g
+!
   PARAMETER (PI=3.141592654,DTR=PI/180.0,R0=6.370E06)
   parameter (atomic_mass_unit=1.66e-27)
+
+  if (.false.) then
+  print *, file_res, geo_grid_colatitudes_degrees, geo_grid_colatitudes_radians, geo_grid_latitudes_degrees, geo_grid_latitudes_radians
+  print *, geo_grid_longitudes_degrees,geo_grid_longitudes_radians
+  print *, idump, iout, iout_high_res, ipcall, ipint, ipint_high
+  print *, km_plasma, m_plasma, n2d_plasma_input_3d, N4S_plasma_input_3d, no_plasma_input_3d, te_dum_plasma_input_3d
+  print *, vzon, yne, yni, yqe, yvi
+  endif
 
   idiagnose = 0
 
@@ -9699,6 +9600,9 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
 
 !*******************************************************************************
 
+  sw_External_model_provides_low_lat_E_fields = GIP_switches(6)
+
+
   div_vperp_3d(:,:) = 0.0
 
           UT_in_hours = UT_in_seconds/3600.
@@ -9710,15 +9614,45 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
           enddo
           enddo
   !g
-!     write(6,*) 'FIRST CALL OF PLASMA ', first_call_of_plasma
+      if(i_first_call_of_plasma == 0) then
+          do mp=1,nmp
 
-      if(first_call_of_plasma == .FALSE.) then
-      write(6,*) 'NOT FIRST CALL OF PLASMA'
+!
+! ......But we need to remember that the dynamo grid (from the electrodynamics solver) goes from
+!       -180 to 180 whereas GIP goes from 0 to 360... (this is the rotation bug spotted by Houjun)...
+!
+!       ....so we need the following 2 lines.....
+!
+          ilon_dynamo = mp + (nmp / 2)
+          if(ilon_dynamo > nmp+1) ilon_dynamo = ilon_dynamo - nmp
 
-      else 
 
-      write(165,*) 'FIRST CALL OF PLASMA'
-      endif  ! first_call_of_plasma
+          !g
+          !g Loop over every second tube. These are the ones that correspond directly to the
+          !g dynamo grid positions....
+          !g
+              do lp=1,nlp,2
+
+                  ilat_dynamo = ((N_DYN_LAT - 1) / 2) - ((NLP-1)/2) + ((LP-1)/2)
+
+                  potential_on_tubes(mp,lp) = potential_field(ilon_dynamo,ilat_dynamo)
+                  ed1_on_tube(mp,lp) = ed1_from_dynamo(ilon_dynamo,ilat_dynamo)
+                  ed2_on_tube(mp,lp) = ed2_from_dynamo(ilon_dynamo,ilat_dynamo)
+
+              enddo
+          !g
+          !g For the other remaining tubes, we get our values by interpolation (averaging)...
+          !g
+              do lp=2,nlp-1,2
+
+                  potential_on_tubes(mp,lp) = (potential_on_tubes(mp,lp+1)+potential_on_tubes(mp,lp-1))/2.0
+                  ed1_on_tube(mp,lp) = (ed1_on_tube(mp,lp+1) + ed1_on_tube(mp,lp-1))/2.0
+                  ed2_on_tube(mp,lp) = (ed2_on_tube(mp,lp+1) + ed2_on_tube(mp,lp-1))/2.0
+
+              enddo
+          enddo
+
+      endif
   !g
   !g
 !       midpoint = (NPTS+1)/2
@@ -9809,10 +9743,10 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
                   BB(i) = 0.0
                   Gravity(i) = 9.81*R0*R0/(GR_1D(i)*GR_1D(i))
               enddo
-
-!GHGM - NEED TO SORT THIS....
-!                  call ML__Calculate_div_vperp(Apex_e1,Apex_e2,Apex_Be3,Apex_grdlbm2, &
-!                                               ed1_on_tube,ed2_on_tube,div_vperp_3d,in,is,mp,lp)
+              if(i_first_call_of_plasma == 0) then
+                  call ML__Calculate_div_vperp(Apex_e1,Apex_e2,Apex_Be3,Apex_grdlbm2, &
+                  ed1_on_tube,ed2_on_tube,div_vperp_3d,in,is,mp,lp)
+              endif
 
 !cg
 !cg need to know the midpoint of each tube..... 
@@ -9826,18 +9760,13 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
           !g  full coupled electrodynamics - or at least not allowing the electrodynamic Efields to feedback)
           !g  .....
           !g
-!
-! EMPIRICAL EFIELD MODEL (ALWAYS CALLED)
-!
+              IF ( .NOT. sw_External_model_provides_low_lat_E_fields ) THEN
+
               apex_height_km = altitude_PZ_km(midpoint(lp))
               geolon_apex_degrees = glond(midpoint(lp))
               local_time_apex(mp,lp) = glon(midpoint(lp),mp)/dtr/15. + UT_in_hours
               if(local_time_apex(mp,lp) > 24.) local_time_apex(mp,lp) = local_time_apex(mp,lp) - 24.
-
-              if(apex_height_km > 1000.) then  ! empirical efields come from Richmond                        
-!
-! RICHMOND EMPIRICAL EFIELD MODEL
-!
+              if(apex_height_km > 1000.) then
               !g
               !g for apex_heights of greater than 1000km we use the Richmond model
               !g and therefore need to know a few things like which point on the tube is nearest
@@ -9867,65 +9796,144 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
                   xmlat_300 = 0.0
                   e2_factor_from_300km_to_apex = 0.0
               endif
-!
-! EMPIRICAL EFIELD MODEL (RICHMOND/FEJER)
-!
+
               call ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,local_time_apex(mp,lp), &
               geolon_apex_degrees, &
               ut_in_hours,iday_number,f107,e2_factor_from_300km_to_apex, &
               v_upwards_at_apex_empirical)
-!
-! END OF EMPIRICAL EFIELD MODEL (ALWAYS CALLED)
-!
+
+              ENDIF
+
           !g
           !g The outer most tube and inner tubes with apex heights of less than 100km
           !g do not have any ExB convection......
           !g
+                if(lp > 1 .AND. ((re_apex(mp,lp)-r0)/1000.) > 100.) then
+!             if(lp > 10 .AND. ((re_apex(mp,lp)-r0)/1000.) > 100.) then
+              !g
+              ! vpeq(mp,lp)=vpeq_coupled(mp,lp)
+              !g
+              !g
+              !g  The potential field is on the dynamo grid - related to our flux-tube grid
+              !g  but it extends further north and south to each pole.
+              !g  Convert between our 'lp' and the dynamo index 'ilat_dynamo' and define
+              !g  a new parameter 'potential_on_tubes' ...
+              !g
+                  if(i_first_call_of_plasma == 0) then
+                      Ve1 = ed2_on_tube(mp,lp) / apex_be3(in(mp,lp),mp)
+                      Ve2 = 0.0 - ( ed1_on_tube(mp,lp) / apex_be3(in(mp,lp),mp) )
+                  else
+                      Ve1 = 0.0
+                      Ve2 = 0.0
+                  endif
+              !g
+              !g  Ve1 and Ve2 are constant along the magnetic field line.
+              !g  We can now calculate the vertical component of velocity at the apex...
+              !g
 
-IF(lp > 1 .AND. ((re_apex(mp,lp)-r0)/1000.) > 100.) then  ! ExB drifts or doesn't         
+          V_upwards_at_apex = (Ve1 * apex_e1(3,midpoint(lp),mp)) + (Ve2 * apex_e2(3,midpoint(lp),mp))
+          V_upwards_at_apex_array(mp,lp) = V_upwards_at_apex
 
-!                 do i = in(mp,lp) , is(mp,lp)
-!                   V_exb_east(i,mp) = (Ve1 * apex_e1(1,i,mp)) + (Ve2 * apex_e2(1,i,mp))
-!                   V_exb_north(i,mp) = (Ve1 * apex_e1(2,i,mp)) + (Ve2 * apex_e2(2,i,mp))
-!                   V_exb_up(i,mp) = (Ve1 * apex_e1(3,i,mp)) + (Ve2 * apex_e2(3,i,mp))
-!                 enddo
-
-                 if (mp.eq.1.and.lp.eq.20) then
-                 write(185,7611) UT_in_seconds,mp,lp,apex_height_km,geolon_apex_degrees, & 
-                                 V_upwards_at_apex_electrodynamics(mp,lp),v_upwards_at_apex_empirical
-                 endif
-                 7611 format('BEFORE STEP BACK ExB ',f7.1,2i4,2e12.4,2f7.1)
+                 do i = in(mp,lp) , is(mp,lp)
+                   V_exb_east(i,mp) = (Ve1 * apex_e1(1,i,mp)) + (Ve2 * apex_e2(1,i,mp))
+                   V_exb_north(i,mp) = (Ve1 * apex_e1(2,i,mp)) + (Ve2 * apex_e2(2,i,mp))
+                   V_exb_up(i,mp) = (Ve1 * apex_e1(3,i,mp)) + (Ve2 * apex_e2(3,i,mp))
+                 enddo
 
               !g
               !g  ...which then becomes our vpeq
               !g
               !g
-                  IF ( sw_feedback_electrodynamic_efields ) THEN
-                     IF ( first_call_of_plasma == .FALSE. ) then
+                  IF ( sw_External_model_provides_low_lat_E_fields ) THEN
 
-                        ! Normal feedback of electrodynamics
-                        vpeq(mp,lp)=V_upwards_at_apex_electrodynamics(mp,lp)
-
-                     ELSE
-
-                        ! First call of Plasma electrodynamics comes from value
-                        ! in input netcdf file
-                        vpeq(mp,lp)=vpeq_saved(mp,lp)
-
-                     ENDIF
+                      if(i_first_call_of_plasma == 1) then
+                          vpeq(mp,lp)=vpeq(mp,lp)
+                      else
+                          vpeq(mp,lp)=V_upwards_at_apex
+                      endif
+!                     write(185,*) UT_in_seconds,mp,lp,V_upwards_at_apex
 
                   ELSE
 
-                  vpeq(mp,lp) = v_upwards_at_apex_empirical
-!                 vpeq(mp,lp) = 0.0
+                      vpeq(mp,lp) = v_upwards_at_apex_empirical
 
                   ENDIF
               !g
-                 if (mp.eq.1.and.lp.eq.20) then
-                 write(185,7612) UT_in_seconds,mp,lp,apex_height_km,geolon_apex_degrees, & 
-                                 vpeq(mp,lp)
-                 endif
-                 7612 format('VPEQ                 ',f7.1,2i4,2e12.4,f7.1)
+
+
+! cgm - start of the empirical electric fields insert
+
+              apex_height_km = altitude_PZ_km(midpoint(lp))
+              geolon_apex_degrees = glond(midpoint(lp))
+              local_time_apex(mp,lp) = glon(midpoint(lp),mp)/dtr/15. + UT_in_hours
+              if(local_time_apex(mp,lp) > 24.) local_time_apex(mp,lp) = local_time_apex(mp,lp) - 24.
+              if(apex_height_km > 1000.) then
+              !g
+              !g for apex_heights of greater than 1000km we use the Richmond model
+              !g and therefore need to know a few things like which point on the tube is nearest
+              !g 300km and such like...
+              !g
+                  gr300= r0 + 300.e3
+                  call ML__FASTHL__NEARHTPLA(gr_1d,gr300,in(mp,lp),midpoint(lp),in1,in2,i300(mp,lp), &
+                  ifailed)
+                  xmlon_300 = blon(mp,lp)/dtr
+                  xmlat_300 = 90. - (bcol(i300(mp,lp),mp)/dtr)
+              !g
+                  magnitude_e2_at_300 = sqrt((apex_e2(1,i300(mp,lp),mp)*apex_e2(1,i300(mp,lp),mp)) + &
+                  (apex_e2(2,i300(mp,lp),mp)*apex_e2(2,i300(mp,lp),mp)) + &
+                  (apex_e2(3,i300(mp,lp),mp)*apex_e2(3,i300(mp,lp),mp)))
+              !g
+                  magnitude_e2_at_apex = sqrt((apex_e2(1,midpoint(lp),mp)*apex_e2(1,midpoint(lp),mp)) + &
+                  (apex_e2(2,midpoint(lp),mp)*apex_e2(2,midpoint(lp),mp)) + &
+                  (apex_e2(3,midpoint(lp),mp)*apex_e2(3,midpoint(lp),mp)))
+
+                  e2_factor_from_300km_to_apex = magnitude_e2_at_apex / magnitude_e2_at_300
+              else
+              !g
+              !g ... for apex heights below 1000km we do not use the Richmond model and therefore these
+              !g  parameters are not needed (thus set to zero).....
+              !g
+                  xmlon_300 = 0.0
+                  xmlat_300 = 0.0
+                  e2_factor_from_300km_to_apex = 0.0
+              endif
+
+              call ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,local_time_apex(mp,lp), &
+              geolon_apex_degrees, &
+              ut_in_hours,iday_number,f107,e2_factor_from_300km_to_apex, &
+              v_upwards_at_apex_empirical)
+
+
+
+
+! cgm - end of the empirical electric fields insert
+
+
+
+
+                  local_time_apex(mp,lp) = glon(midpoint(lp),mp)/dtr/15. + UT_in_hours
+                  if(local_time_apex(mp,lp) > 24.) local_time_apex(mp,lp) = local_time_apex(mp,lp) - 24.
+              !g
+!                write(121,9611) ut_in_hours,mp,lp,altitude_pz_km(midpoint(lp)),local_time_apex(mp,lp),Vpeq(mp,lp), &
+!                                ed1_on_tube(mp,lp),ed2_on_tube(mp,lp),apex_be3(in(mp,lp),mp),apex_e1(3,midpoint(lp),mp), &
+!                                apex_e2(3,midpoint(lp),mp)
+
+!      write(121,9611) ut_in_hours,mp,lp,altitude_pz_km(midpoint(lp)),local_time_apex(mp,lp),V_exb_east(midpoint(lp),mp), &
+!            V_exb_north(midpoint(lp),mp),V_exb_up(midpoint(lp),mp),v_upwards_at_apex_empirical
+
+!                9611 format(f7.2,2i4,f12.2,f7.2,f9.2,5e12.4)
+!                 9611 format(f7.2,2i4,f12.2,f7.2,4f9.2)
+
+!                if (mp.eq.1.or.mp.eq.21.or.mp.eq.41.or.mp.eq.61) then
+!                if (lp.eq.7.or.lp.eq.18.or.lp.eq.28.or.lp.eq.38) then
+!                write(122,*) ut_in_hours,mp,lp,in(mp,lp),is(mp,lp),local_time_apex(mp,lp)
+!                do i = in(mp,lp) , is(mp,lp)
+!                   write(122,9612) i,altitude_pz_km(i),V_exb_east(i,mp),V_exb_north(i,mp),V_exb_up(i,mp)
+!9612 format(i4,f12.2,3f9.2)
+!                enddo
+!                endif
+!                endif
+              !g
 
                   CALL ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,plasma_time_step_seconds,ni, &
                   q_coordinate,vi,Temp_ion,Temp_electron,ne,ni_save,vi_save,ti_save,te_save &
@@ -9934,7 +9942,7 @@ IF(lp > 1 .AND. ((re_apex(mp,lp)-r0)/1000.) > 100.) then  ! ExB drifts or doesn'
               !g
               !g else we have a tube which hasn't drifted....
               !g
-ELSE
+              else
               !g
                   do i=in(mp,lp),is(mp,lp)
                       ni_save(i,mp,1)=ni(i,mp,1)
@@ -9946,9 +9954,9 @@ ELSE
                       te_save(i,mp)=Temp_electron(i,mp)
                   enddo
                   vpeq(mp,lp)=0.0
-
-ENDIF ! Tube ExB drifts or doesn't
-
+              !g
+              endif
+          !g
           750 ENDDO
       800 ENDDO
 !       write(6,*) '***** done mid-latitude ExB drifts *****'
@@ -10112,11 +10120,10 @@ ENDIF ! Tube ExB drifts or doesn't
               midpoint(lp) = (in(mp,lp) + is(mp,lp)) / 2
 
           i_write_out_tube = 0
-!         if(lp.eq.20.and.mp.eq.1) then
+!         if(lp.eq.1.and.mp.eq.56) then
 !         i_write_out_tube = 1
 !         write(6,*) 'calling single_flux_tube ',mp,lp,midpoint(lp)
 !         endif
-
           call ML__single_flux_tube_1D_calculation( &
                                                GIP_switches, &
                                                mp,lp,in(mp,lp),is(mp,lp), &
@@ -10171,8 +10178,10 @@ ENDIF ! Tube ExB drifts or doesn't
                                                solar_declination_angle_degrees, &
                                                ut_in_seconds, &
                                                i_write_out_tube, &
-                                               iday_number,local_time_apex(mp,lp),glat(in(mp,lp)), &
-                                               90. - (bcol(in(mp,lp),mp)/dtr),i300(mp,lp))      
+                                               i_attempt, &
+                                               iday_number)
+
+          i_attempt_array(mp,lp) = i_attempt
 
 
           do i=in(mp,lp),is(mp,lp)
@@ -10200,6 +10209,11 @@ ENDIF ! Tube ExB drifts or doesn't
 
           450 ENDDO
       500 ENDDO
+
+!        write(196,*) UT_in_hours
+!        write(196,*) i_attempt_array 
+!        write(196,*) local_time_apex 
+
 
 
 !           write(6,*) '******* finished plasma calculation ********'
@@ -10229,6 +10243,20 @@ ENDIF ! Tube ExB drifts or doesn't
           dynamo_latitude)
       !g
       endif
+  !g
+  !g  Write the electrodynamic velocities to unit 96...
+  !g
+!     if (i_no_day >= i_graphics_out_start) then
+!         write(96,*) UT_in_hours
+!     !g
+!     !g  writing out tube 36 ExB velocities here (an altitude of 310 km) ....
+!     !g
+!     ! write(96,3955) (vpeq(mp,20),vzon_coupled(mp,20),mp=1,nmp)
+!         write(96,3955) (v_upwards_at_apex_array(mp,36),mp=1,nmp)
+!         write(96,3955) (local_time_apex(mp,36),mp=1,nmp)
+!     endif
+!      3955 format(10f8.2)
+
 
   endif !  nnloop eq zero endif
 
@@ -10400,8 +10428,8 @@ SUBROUTINE ML__single_flux_tube_1D_calculation( &
                                                solar_declination_angle_degrees, &
                                                ut_in_seconds, &
                                                i_write_out_tube, &
-                                               iday_number, local_time_apex,glat1, &
-                                               blat,i300)
+                                               i_attempt, &
+                                               iday_number)
 
            IMPLICIT NONE
            INTEGER :: NPTS
@@ -10420,13 +10448,9 @@ SUBROUTINE ML__single_flux_tube_1D_calculation( &
            INTEGER :: i_failed_molecular_ions
            INTEGER :: idiagnose
            INTEGER :: istop
-           INTEGER :: i300
            LOGICAL :: sw_use_EUVAC_solar_spectrum
            LOGICAL :: GIP_switches(20)
 
-           REAL(kind=8) :: local_time_apex
-           REAL(kind=8) :: glat1
-           REAL(kind=8) :: blat
            REAL(kind=8) :: plasma_time_step_seconds
            REAL(kind=8) :: plasma_energy_time_step_seconds
            REAL(kind=8) :: ut_in_seconds
@@ -10548,9 +10572,11 @@ SUBROUTINE ML__single_flux_tube_1D_calculation( &
            REAL(kind=8) :: sigma_hall_1d(npts)
            REAL(kind=8) :: tiegcm_sigma_ped_1d(npts)
            REAL(kind=8) :: tiegcm_sigma_hall_1d(npts)
+           REAL(kind=8) :: O_plus_production_fudge_factor
 
            integer i_write_out_tube
            integer i_use_tiegcm_ions_for_dynamo_calculation
+           integer i_attempt
 
            integer IN_double
            integer IS_double
@@ -10717,7 +10743,7 @@ vp(i) = 0.0
 !       enddo
 !     endif
 ! *************************
-2129   format(i6,2e12.4)
+!2129   format(i6,2e12.4)
   endif
 
 
@@ -10778,27 +10804,39 @@ vp(i) = 0.0
               enddo
 
 
+              do 2316 i_attempt = 1 , 6
 
-              write(166,2555) mp,lp,local_time_apex,glat1,blat, &
-                            peuvi(i300,1)
- 2555 format(3i5,3f8.2,e12.4)
+              if (i_attempt == 1) O_plus_production_fudge_factor = 0.0
+              if (i_attempt == 2) O_plus_production_fudge_factor = 5.0e-12
+              if (i_attempt == 3) O_plus_production_fudge_factor = 5.0e-11
+              if (i_attempt == 4) O_plus_production_fudge_factor = 1.0e-10
+              if (i_attempt == 5) O_plus_production_fudge_factor = 5.0e-10
+              if (i_attempt == 6) O_plus_production_fudge_factor = 1.0e-9
+
+!             if(i_write_out_tube.eq.1) write(6,*) 'i_attempt ',i_attempt
 
               CALL ML__DIFFUSION_EQUATION_O_PLUS(1,IN,IS,nuin,chemp_1, &
               beta_1,peuvi,g_parallel,dte_1d,dti_Oplus_1d,dti_Hplus_1d,upar_apex, &
               eta_apex_1d,dq_1d,TI_Oplus_1d,TI_Hplus_1d,TE_1d,ni_OPlus_1d,ni_Hplus_1d, &
               dni_oplus_1d,dni_hplus_1d,Vi_oplus_1d,vi_hplus_1d,NE_1d,div_vperp_1d, &
               O,M_plasma(1),M_plasma(2),KM_plasma,plasma_time_step_seconds,Ofailed, &
-              i_write_out_tube,altitude_PZ_km)
+              i_write_out_tube,altitude_PZ_km,O_plus_production_fudge_factor)
  
               if (Ofailed == 1) then
+                  if (i_attempt == 5) write(6,*) 'Ofailed  (5th attempt) ' , mp , lp
                   do i = in , is
                       ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
                       vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
                       ne_1d(i) = ne_1d_saved(i)
                       dni_Oplus_1d(i) = dni_Oplus_1d_saved(i)
                   enddo
+              else
+                  goto 2317
               endif
+
  2316         continue
+
+ 2317         continue
 
 
 
@@ -10837,7 +10875,7 @@ vp(i) = 0.0
               eta_apex_1d,dq_1d,TI_Oplus_1d,Ti_Hplus_1d,TE_1d,ni_oplus_1d,ni_hplus_1d, &
               dni_oplus_1d,dni_hplus_1d,VI_oplus_1d,vi_hplus_1d,NE_1d,div_vperp_1d, &
               O,M_plasma(1),M_plasma(2),KM_plasma,plasma_time_step_seconds,Hfailed, &
-              i_write_out_tube,altitude_PZ_km)
+              i_write_out_tube,altitude_PZ_km,O_plus_production_fudge_factor)
 
           if (idiagnose.eq.1) write(6,*) 'here 10'
           !g
@@ -11077,7 +11115,7 @@ end SUBROUTINE ML__FASTHL__NEARHTPLA
 
 SUBROUTINE ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,lt,geolon_apex, &
   ut,iday,f107,e2_factor_300km_to_apex, &
-  v_upwards_at_apex_empirical)
+  v_upwards_at_apex)
 
   implicit none
   REAL(kind=8), intent(in)  :: apex_height_km
@@ -11099,7 +11137,7 @@ SUBROUTINE ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,lt,
   INTEGER :: iday
   INTEGER :: iseasav
   INTEGER :: iutav
-  REAL(kind=8), intent(out)  :: v_upwards_at_apex_empirical
+  REAL(kind=8), intent(out)  :: v_upwards_at_apex
 !g
 
 
@@ -11126,7 +11164,7 @@ SUBROUTINE ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,lt,
           if(apex_height_km < 100.) v_upwards_at_apex_fejer = 0.0
       endif
   !g
-      v_upwards_at_apex_empirical = v_upwards_at_apex_fejer
+      v_upwards_at_apex = v_upwards_at_apex_fejer
   !g
   endif
 
@@ -11142,7 +11180,7 @@ SUBROUTINE ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,lt,
   !g
       v_upwards_at_apex_richmond = v_outwards_at_300km * e2_factor_300km_to_apex
   !g
-      v_upwards_at_apex_empirical = v_upwards_at_apex_richmond
+      v_upwards_at_apex = v_upwards_at_apex_richmond
   !g
   endif
 
@@ -11151,7 +11189,7 @@ SUBROUTINE ML__get_empirical_vertical_exb(apex_height_km,xmlat_300,xmlon_300,lt,
   !g  interpolate between the 2 models according to the apex height....
   !g
       apex_factor = (apex_height_km - 1000.) / 1000.
-      v_upwards_at_apex_empirical = apex_factor * (v_upwards_at_apex_richmond - v_upwards_at_apex_fejer) &
+      v_upwards_at_apex = apex_factor * (v_upwards_at_apex_richmond - v_upwards_at_apex_fejer) &
       + v_upwards_at_apex_fejer
   endif
 !g
@@ -11219,6 +11257,10 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
   vt300(nmp,nlp) , vzeq(nmp,nlp)
 
   REAL(kind=8) :: sqrt_part
+
+  if (.false.) then
+  print *, ne
+  endif
 
 ! step backwards to imagined previous flux-tube position....
 
@@ -11336,7 +11378,7 @@ SUBROUTINE ML__TUBES_LINEAR_INTERPOLATE(re_apex,vpeq,dt,ni &
           inorth=in(mp,lp_in)
           ispecial=2
       endif
-      24 format(i4,2x,3f9.5)
+!      24 format(i4,2x,3f9.5)
   !g
       if(iww == 1) write(88,*) 'ispecial ',ispecial
       if(ispecial == 0) then
@@ -11607,9 +11649,9 @@ SUBROUTINE ML__ION_TEMP_PLASMA(TN,TE,N1,N2,TI, &
   DO 100 l = in , is
       u2 = U2Dif(l)*1.0E4
 
-      if(o(l) < 1.d-50) o(l)=1.d-50
-      if(o2(l) < 1.d-50) o2(l)=1.d-50
-      if(nit(l) < 1.d-50) nit(l)=1.d-50
+      if(o(l) < 1.E-50) o(l)=1.E-50
+      if(o2(l) < 1.E-50) o2(l)=1.E-50
+      if(nit(l) < 1.E-50) nit(l)=1.E-50
       cf1nk1 = 3.42E-17*O(l)*factor
       cf1nk2 = 6.66E-16*O2(l)
       cf1nk3 = 6.82E-16*NIT(l)
@@ -11774,6 +11816,10 @@ SUBROUTINE ML__CHEMISTRY_O_plus(chemp_1,beta_1,IN,IS,TN,O,O2,N2,HYD, &
   real(kind=8) :: chemp_1(NPTS)
   real(kind=8) :: beta_1(NPTS)
 
+  if (.false.) then
+  print *, ni_oplus_1d
+  endif
+
 
   DO 100 i = IN , IS
 
@@ -11878,7 +11924,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
                                 TI_oplus_1d,ti_hplus_1d,TE_1d,ni_oplus_1d,ni_hplus_1d, &
                                 DNI_oplus_1d,dni_hplus_1d,VI_oplus_1d,vi_hplus_1d,NE_1d, &
                                 DVP,O,Mass_Oplus,Mass_Hplus,km,dt,ifailed,i_write_out_tube, &
-                                altitude_PZ_km)
+                                altitude_PZ_km,O_plus_production_fudge_factor)
 
 !***********************************************************************
 !          routine to evaluate O+ concentrations and fluxes 
@@ -11889,7 +11935,6 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
   INTEGER :: i , IN , in1 , IS , is1 , J
   INTEGER :: ifailed
   INTEGER :: i_write_out_tube
-  INTEGER :: itries
 
   real(kind=8) :: w1 , w2 , w3 , w4 , w5
   real(kind=8) :: w51, w52
@@ -11935,6 +11980,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
   real(kind=8) :: km(6)
   real(kind=8) :: dt
   real(kind=8) :: altitude_PZ_km(NPTS)
+  real(kind=8) :: O_plus_production_fudge_factor
 
   in1 = IN + 1
   is1 = IS - 1
@@ -11946,12 +11992,18 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
 
 !--first find hij,hik and hin then xi and yi
 
-  DO i = IN , IS
+  DO 100 i = IN , IS
+  !g
+  !g  Add a bit to the O+ production rate....the dreaded fudge bit....
+  !g
+            peuvi(i,j)=peuvi(i,j)+O_plus_production_fudge_factor*o(i)
+
       ww2(i) = 0.
-  ENDDO
-  DO i = IN , IS
-      ww2(i) = ww2(i) + DNI_hplus_1d(i)
-  ENDDO
+  100 ENDDO
+
+          DO i = IN , IS
+              ww2(i) = ww2(i) + DNI_hplus_1d(i)
+          ENDDO
 
   DO i = IN , IS
       w1 = 1./(nuij(i)+NUIn(i)+1.E-3)
@@ -11996,23 +12048,20 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
 
   if (i_write_out_tube.eq.1) then
     do i = in , is
-      write(6,5466) i, altitude_PZ_km(i),a(i),b(i),c(i),d(i),f(i)
-!      write(6,5466) i, altitude_PZ_km(i),BETa_1(i),DVP(i),yp(i),f(i)
+!     write(6,5466) i, altitude_PZ_km(i),a(i),b(i),c(i),d(i),f(i)
+      write(6,5466) i, altitude_PZ_km(i),BETa_1(i),DVP(i),yp(i),f(i)
     enddo
-  5466 format('yowzer ',i5,f10.0,5e12.4)
+  5466 format(i5,f10.0,5e12.4)
   endif
 
 
   ifailed=0
 
-  do itries = 1 , 2
-  do i = in1 , is1
-      IF ( f(i) <= 0.0 ) THEN
-!       write(6,*) 'ifailpoint ',i,altitude_PZ_km(i)
-      f(i) = (f(i+1) + f(i-1)) / 2.0
-      ENDIF
-  enddo
-  enddo
+! do i = in1 , is1
+!     IF ( f(i) <= 0.0 ) THEN
+!      write(6,*) 'ifailpoint ',i,altitude_PZ_km(i)
+!     ENDIF
+! enddo
 
   DO 600 i = in1 , is1
       IF ( f(i) <= 0.0 ) THEN
@@ -12077,7 +12126,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
                                 TI_oplus_1d,ti_hplus_1d,TE_1d,ni_oplus_1d,ni_hplus_1d, &
                                 DNI_oplus_1d,dni_hplus_1d,VI_oplus_1d,vi_hplus_1d,NE_1d, &
                                 DVP,O,Mass_Oplus,Mass_Hplus,km,dt,ifailed,i_write_out_tube, &
-                                altitude_PZ_km)
+                                altitude_PZ_km,O_plus_production_fudge_factor)
 
 !***********************************************************************
 !          routine to evaluate H+ concentrations and fluxes 
@@ -12134,6 +12183,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
   real(kind=8) :: km(6)
   real(kind=8) :: dt
   real(kind=8) :: altitude_PZ_km(NPTS)
+  real(kind=8) :: O_plus_production_fudge_factor
 
   in1 = IN + 1
   is1 = IS - 1
@@ -12197,6 +12247,9 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
 
   CALL ML__TRIDIAGONAL(a,b,c,d,f,fn,fs,IN,IS)
 
+  if (.false.) then
+  print *, altitude_PZ_km, beta_1, chemp_1, i_write_out_tube, O, O_plus_production_fudge_factor
+  endif
  !if (i_write_out_tube.eq.1) then
  !  do i = in , is
  !    write(6,5466) i, altitude_PZ_km(i),a(i),b(i),c(i),d(i),f(i)
@@ -12213,18 +12266,11 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
 
 !cg
 !cg
-  DO 670 i = in1 , is1
-      IF ( f(i) <= 0.0 ) THEN
-          f(i) = (f(i-1) + f(i+1))/2.0
-          RETURN
-      ENDIF
-  670 ENDDO
 
 
   ifailed=0
   DO 600 i = in1 , is1
       IF ( f(i) <= 0.0 ) THEN
-          write(6,*) 'H failed at ',  altitude_PZ_km(i)
           ifailed=1
   !       stop
           RETURN
@@ -12331,13 +12377,12 @@ SUBROUTINE ML__FIELD_LINE_INTEGRALS(in,is,ds,midpoint, &
 
 ! Output Arguments: 
 
-  real(kind=8),    intent(out) ::    sigma_phph_dsi(2)      !(5.13) divided by |sin I_m |
-  real(kind=8),    intent(out) ::    sigma_lmlm_msi(2)      !(5.14) multiplied by | sin I_m |
-
-  real(kind=8),    intent(out) ::	    sigma_h(2)      !(5.17)
-  real(kind=8),    intent(out) ::	    sigma_c(2)      !(5.18)
-  real(kind=8),    intent(out) ::         Kdmph_dsi(2)      !(5.19) divided by |sin I_m |
-  real(kind=8),    intent(out) ::	    Kdmlm(2)	  !(5.20) plus or minus ????
+real(kind=8), intent(out) :: sigma_phph_dsi(2)   !(5.13) divided by |sin I_m |
+real(kind=8), intent(out) :: sigma_lmlm_msi(2)   !(5.14) multiplied by | sin I_m |
+real(kind=8), intent(out) :: sigma_h(2)          !(5.17)
+real(kind=8), intent(out) :: sigma_c(2)          !(5.18)
+real(kind=8), intent(out) :: Kdmph_dsi(2)        !(5.19) divided by |sin I_m |
+real(kind=8), intent(out) :: Kdmlm(2)            !(5.20) plus or minus ????
 
 
 !----------------------------Local variables-----------------------------
@@ -12386,8 +12431,7 @@ SUBROUTINE ML__FIELD_LINE_INTEGRALS(in,is,ds,midpoint, &
 ! get ion_mass_amu & ion_neut_cf
 
   CALL ML__IONNEUT_PLAS(o,o2,n2, ni_oplus_1d , no_plus, o2_plus, &
-                    effective_temp,ion_neut_cf,ion_mass_amu, &
-                    in,is,iout)
+                    effective_temp,ion_neut_cf,ion_mass_amu,in,is)
 
 
 
@@ -12421,10 +12465,10 @@ SUBROUTINE ML__FIELD_LINE_INTEGRALS(in,is,ds,midpoint, &
 
 ! get pedersen & hall conductivities
 
-!  electron_density = ni_oplus_1d(ipts)+ni_hplus_1d(ipts)+ no_plus(ipts)+o2_plus(ipts) + n2_plus(ipts)+n_plus(ipts)
+ electron_density = ni_oplus_1d(ipts)+ni_hplus_1d(ipts)+ no_plus(ipts)+o2_plus(ipts) + n2_plus(ipts)+n_plus(ipts)
 
 !  ....just use the O+, NO+ and O2+ for the Electron density here (original equation above)........
-  electron_density = ni_oplus_1d(ipts) + no_plus(ipts) + o2_plus(ipts)
+  ! electron_density = ni_oplus_1d(ipts) + no_plus(ipts) + o2_plus(ipts)
 
 
   if (electron_density.gt.1.e-10) then
@@ -12654,12 +12698,11 @@ end SUBROUTINE ML__convert_integral_to_dynamo_grid
 
 
 
-SUBROUTINE ML__IONNEUT_PLAS(P1,P2,P3,PI1,PI2,PI3,T,VIN,AMIn, &
-  IN,IS,iout)
+SUBROUTINE ML__IONNEUT_PLAS(P1,P2,P3,PI1,PI2,PI3,T,VIN,AMIn,IN,IS)
   IMPLICIT NONE
   REAL(kind=8) :: a , AMIn , amu , b , factor , P1 , P2 , P3 , PI1 , PI2 , &
   sum , summol , T , v1 , v2 , VIN , PI3
-  INTEGER :: n , NMAx , iout, in, is
+  INTEGER :: n , NMAx , in, is
 
   DIMENSION P1(npts) , P2(npts) , P3(npts) , T(npts) , &
   VIN(npts) , AMIn(npts) , &
@@ -12683,8 +12726,6 @@ SUBROUTINE ML__IONNEUT_PLAS(P1,P2,P3,PI1,PI2,PI3,T,VIN,AMIn, &
       if(summol < 1.d-90) summol=0.0
       if(v1 < 1.d-90) v1=0.0
       if(v2 < 1.d-90) v2=0.0
-  ! if(pi1(n).lt.1.d-90) pi1(n)=0.0
-  ! if(iout.eq.1) write(6,*) 'here 5',n
       VIN(n) = (v1*PI1(n)+v2*summol)*1.E-06/sum
       AMIn(n) = (PI1(n)*mi1+PI2(n)*mi2+PI3(n)*mi3)*amu/sum
   100 ENDDO
@@ -13699,193 +13740,12 @@ SUBROUTINE ML__Calculate_div_vperp(Apex_e1,Apex_e2,Apex_Be3,Apex_grdlbm2, &
 end SUBROUTINE ML__Calculate_div_vperp
 
 
-SUBROUTINE CALL_DYNAMO_CALCULATE_V_UPWARDS_AT_APEX( &
-                        IN, &
-                        iday_number,universal_time_seconds, &
-                        hours_string,mins_string, &
-                        dynamo_sigma_phph_dsi, dynamo_sigma_lmlm_msi, &
-                        dynamo_sigma_h, dynamo_sigma_c, &
-                        dynamo_Kdmph_dsi, dynamo_Kdmlm, &
-                        midpoint,apex_be3,apex_e1,apex_e2, &                       
-                        V_upwards_at_apex_electrodynamics)
-  IMPLICIT NONE
-  INTEGER mp
-  INTEGER lp
-  INTEGER ilon_dynamo
-  INTEGER ilat_dynamo
-  INTEGER NPTS
-  INTEGER NMP
-  INTEGER NLP
-  PARAMETER (NPTS = 13813)
-  PARAMETER (NMP  = 80)
-  PARAMETER (NLP  = 67)
-  INTEGER midpoint(nlp)
-  INTEGER IN(nmp,nlp)
-  REAL(kind=8) Ve1
-  REAL(kind=8) Ve2
-  REAL(kind=8) Apex_E1(3,NPTS,NMP)
-  REAL(kind=8) Apex_E2(3,NPTS,NMP)
-  REAL(kind=8) Apex_BE3(NPTS,NMP)
-  REAL(kind=8) ed1_on_tube(nmp,nlp)
-  REAL(kind=8) ed2_on_tube(nmp,nlp)
-  REAL(kind=8) potential_on_tubes(nmp,nlp)
-  REAL(kind=8) V_upwards_at_apex_electrodynamics(nmp,nlp)
-  INTEGER N_DYN_LAT
-  PARAMETER (N_DYN_LAT=97)
-  REAL(kind=8) potential_field(NMP+1,N_DYN_LAT)
-  REAL(kind=8) ed1_from_dynamo(NMP+1,N_DYN_LAT)
-  REAL(kind=8) ed2_from_dynamo(NMP+1,N_DYN_LAT)
-
-INTEGER eldyn_iyr
-INTEGER eldyn_iday
-INTEGER iday_number
-INTEGER i, k, l
-INTEGER ilat_dySH, ilat_dyNH
-REAL(kind=8) :: universal_time_seconds
-REAL(kind=8) :: eldyn_secs1
-real*8 :: sunlons(1)
-REAL(kind=8) :: dynamo_sigma_phph_dsi(81,97), &
-    dynamo_sigma_lmlm_msi(81,97), &
-    dynamo_sigma_h(81,97),dynamo_sigma_c(81,97), &
-    dynamo_Kdmph_dsi(81,97),dynamo_Kdmlm(81,97)
-character(len=15) :: potential_model
-character(len=2) :: hours_string
-character(len=2) :: mins_string
-parameter(potential_model = 'HEELIS')
-
-REAL(kind=8) :: zigm11_in(81,97), zigm22_in(81,97), zigmc_in(81,97),zigm2_in(81,97),rim_in(81,97,2)          
-REAL(kind=8) :: ed1_out(81,97)
-REAL(kind=8) :: ed2_out(81,97)
-integer istop
 
 
-call init_cons               ! done only once
-call init_heelis             ! done only once
-
-eldyn_iyr  = 1999
-eldyn_iday =  iday_number 
-eldyn_secs1 = universal_time_seconds
-
-!write(185,*) 'ELDYN VALS BO 1',eldyn_iyr,eldyn_iday,eldyn_secs1
-
-call sunloc(eldyn_iyr,eldyn_iday,eldyn_secs1,sunlons)
-
-!write(185,*) 'SUNLONS BO 2',sunlons
-
-call highlat(potential_model,sunlons)
-
-zigm11_in(1:nmlonp1,1:nmlat) = dynamo_sigma_phph_dsi(1:nmlonp1,1:nmlat)
-zigm22_in(1:nmlonp1,1:nmlat) = dynamo_sigma_lmlm_msi(1:nmlonp1,1:nmlat)
-zigmc_in(1:nmlonp1,1:nmlat) = dynamo_sigma_c(1:nmlonp1,1:nmlat)
-zigm2_in(1:nmlonp1,1:nmlat) = dynamo_sigma_h(1:nmlonp1,1:nmlat)
-rim_in(1:nmlonp1,1:nmlat,1) = dynamo_Kdmph_dsi(1:nmlonp1,1:nmlat)
-rim_in(1:nmlonp1,1:nmlat,2) = dynamo_Kdmlm(1:nmlonp1,1:nmlat)
-
-ilat_dySH=15
-ilat_dyNH=83
-
-!SH: 1-14<--15
- L_loop: do L=1,nmlonp1
- zigm11_in(L,1:ilat_dySH-1)      =zigm11_in(L,ilat_dySH)
- zigm22_in(L,1:ilat_dySH-1)      =zigm22_in(L,ilat_dySH)
-  zigmc_in(L,1:ilat_dySH-1)      = zigmc_in(L,ilat_dySH)
-  zigm2_in(L,1:ilat_dySH-1)      = zigm2_in(L,ilat_dySH)
-    k_loopSH: do k=1,2
-    rim_in(L,1:ilat_dySH-1,k)  =     rim_in(L,ilat_dySH,k)
-    enddo k_loopSH
-
-!NH: 84-97<--83
- zigm11_in(L,ilat_dyNH+1:nmlat)      =zigm11_in(L,ilat_dyNH)
- zigm22_in(L,ilat_dyNH+1:nmlat)      =zigm22_in(L,ilat_dyNH)
-  zigmc_in(L,ilat_dyNH+1:nmlat)      = zigmc_in(L,ilat_dyNH)
-  zigm2_in(L,ilat_dyNH+1:nmlat)      = zigm2_in(L,ilat_dyNH)
-    k_loopNH: do k=1,2
-    rim_in(L,ilat_dyNH+1:nmlat,k)  =   rim_in(L,ilat_dyNH,k)
-    enddo k_loopNH
- enddo L_loop !: do L=1,nmlonp1
-
-!nm041007: confirmed with gip2dynamo.F
-! am 10/04 change sign of K_(m lam)^D in the SH- that's what TIEGCM dynamo
-! expects
-      do j = 1,(nmlat+1)/2  !=49:  SP--> eq
-        rim_in(1:nmlonp1,j,2) = -rim_in(1:nmlonp1,j,2)
-      enddo
-
-!nm032007: extracted from readin.F : sub- readin_ascii
-! am 10/04 so far no value at the equator
-!nm041007: this assumption is valid! confirmed with gip2dynamo.F gip_tiegcm
-!version
-
-      j = (nmlat+1)/2   !=nmlath: index to magnetic equator
-      do i = 1,nmlonp1
-         zigm11_in(i,j)   = .125*(zigm11_in(i,j-1)+ zigm11_in(i,j+1))
-         zigm22_in(i,j)   = .125*(zigm22_in(i,j-1)+ zigm22_in(i,j+1))
-         zigmc_in(i,j)   = .125*( zigmc_in(i,j-1) + zigmc_in(i,j+1))
-         zigm2_in(i,j)   = .06 *( zigm2_in(i,j-1) + zigm2_in(i,j+1))
-         rim_in(i,j,1) = .06 *(   rim_in(i,j-1,1) + rim_in(i,j+1,1))
-         rim_in(i,j,2) = .06 *(   rim_in(i,j-1,2) + rim_in(i,j+1,2))
-      enddo ! i = 1,nmlon
-
-!do j = 1 , nmlat
-!write(185,1425) j, zigm11_in(1,j), zigm22_in(1,j), zigmc_in(1,j), zigm2_in(1,j), rim_in(1,j,1), rim_in(1,j,2)                     
-!enddo
-!1425 format(i4,6e12.4)
-
-      call dynamo(zigm11_in, zigm22_in, zigmc_in, zigm2_in, rim_in, ed1_out, ed2_out)
-
-!write(185,*) 'ED1'
-!write(185,*) ed1_out(20,20)
-!write(185,*) 'END ED1'
-!istop = 0
-!if(istop.eq.1) stop
-          do mp=1,nmp
-
-!
-! ......But we need to remember that the dynamo grid (from the electrodynamics solver) goes from
-!       -180 to 180 whereas GIP goes from 0 to 360... (this is the rotation bug spotted by Houjun)...
-!
-!       ....so we need the following 2 lines.....
-!
-          ilon_dynamo = mp + (nmp / 2)
-          if(ilon_dynamo > nmp+1) ilon_dynamo = ilon_dynamo - nmp
 
 
-          !g
-          !g Loop over every second tube. These are the ones that correspond directly to the
-          !g dynamo grid positions....
-          !g
-              do lp=1,nlp,2
 
-                  ilat_dynamo = ((N_DYN_LAT - 1) / 2) - ((NLP-1)/2) + ((LP-1)/2)
 
-                 potential_on_tubes(mp,lp) = potential_field(ilon_dynamo,ilat_dynamo)
-                 ed1_on_tube(mp,lp) = ed1_out(ilon_dynamo,ilat_dynamo)
-                 ed2_on_tube(mp,lp) = ed2_out(ilon_dynamo,ilat_dynamo)
-
-              enddo
-          !g
-          !g For the other remaining tubes, we get our values by interpolation (averaging)...
-          !g
-              do lp=2,nlp-1,2
-
-                  potential_on_tubes(mp,lp) = (potential_on_tubes(mp,lp+1)+potential_on_tubes(mp,lp-1))/2.0
-                  ed1_on_tube(mp,lp) = (ed1_on_tube(mp,lp+1) + ed1_on_tube(mp,lp-1))/2.0
-                  ed2_on_tube(mp,lp) = (ed2_on_tube(mp,lp+1) + ed2_on_tube(mp,lp-1))/2.0
-
-              enddo
-          enddo
-
-          do mp=1,nmp
-          do lp=1,nlp
-            Ve1 = ed2_on_tube(mp,lp) / apex_be3(in(mp,lp),mp)
-            Ve2 = 0.0 - ( ed1_on_tube(mp,lp) / apex_be3(in(mp,lp),mp) )
-!          write(185,*) 'YOOO ', ed1_on_tube(mp,lp) , apex_be3(in(mp,lp),mp)                             
-            V_upwards_at_apex_electrodynamics(mp,lp) = (Ve1 * apex_e1(3,midpoint(lp),mp)) + (Ve2 * apex_e2(3,midpoint(lp),mp))
-!           write(185,*) 'YOOO ', Ve1, apex_e1(3,midpoint(lp),mp),Ve2, apex_e2(3,midpoint(lp),mp)         
-          enddo
-          enddo
-
-END SUBROUTINE CALL_DYNAMO_CALCULATE_V_UPWARDS_AT_APEX
 
 
 

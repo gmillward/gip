@@ -7,3 +7,6 @@ gt_gip_model
 static_files/
 data/
 
+# Backup files
+*_previous
+*_before_*

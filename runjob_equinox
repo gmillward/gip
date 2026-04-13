@@ -1,0 +1,14 @@
+#!/bin/csh
+#
+#  Identify your project
+#$ -A gt-md
+#  Ask for one processor on eJet (ncomp on iJet, wcomp on wJet)
+#$ -pe comp 1
+#  Maximum wallclock time set to 30 minutes
+#$ -l h_rt=08:00:00
+#  Start the script in the place it was submitted from (optional)
+#$ -cwd
+date > out_day_80_180_test
+./gt_gip_model3 < input_equinox >> out_day_80_180_test
+date >> out_day_80_180_test
+
