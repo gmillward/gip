@@ -1,0 +1,20 @@
+#
+UNAMES = $(shell uname -s)
+EXEC = gt_gip_model
+
+FORTRAN_C=${FORTRAN_COMPILER}
+FORTRAN_L=${FORTRAN_LINKER}
+FFLAGS=-O3 -r8 -I$(NETCDF)/include
+FFLAGS_F77= 
+LFLAGS=-L. -L$(NETCDF)/lib -lnetcdf
+#
+OBJS = GIP_ionosphere_plasmasphere.o  GT_thermosphere.o  run_parameters.o  tucan_time.o 
+# 
+.SUFFIXES:  .f .f90 .F .f77
+#
+$(EXEC):	$(OBJS)
+	$(FORTRAN_L) -o $@ $(OBJS) $(LFLAGS)  $(LIBS)
+#
+.f90.o:
+	$(FORTRAN_C) $(FFLAGS) $<
+#

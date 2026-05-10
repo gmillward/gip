@@ -1,0 +1,13 @@
+# NetCDF output/run data files
+*.nc
+
+# Large binary coordinate/reference data (>100MB, over GitHub limit)
+static_files/GIP_COORDS_FILE
+static_files/GIP_apex_coords_etc.2000.0.format
+static_files/GIP_dipole_coords
+
+# macOS metadata
+.DS_Store
+
+# Claude Code local settings
+.claude/
