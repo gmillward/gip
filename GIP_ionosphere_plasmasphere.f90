@@ -5741,9 +5741,9 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
         iht_above_3d(1:nhgt,m,l) = iht_above_1d(1:nhgt)
         iht_below_3d(1:nhgt,m,l) = iht_below_1d(1:nhgt)
         factor_ht_3d(1:nhgt,m,l) = factor_ht_1d(1:nhgt)
-        iht_above_inverse_3d(1:nhgt,m,l) = iht_above_inverse_1d(1:nhgt)
-        iht_below_inverse_3d(1:nhgt,m,l) = iht_below_inverse_1d(1:nhgt)
-        factor_ht_inverse_3d(1:nhgt,m,l) = factor_ht_inverse_1d(1:nhgt)
+        iht_above_inverse_3d(1:interface_hts,m,l) = iht_above_inverse_1d(1:interface_hts)
+        iht_below_inverse_3d(1:interface_hts,m,l) = iht_below_inverse_1d(1:interface_hts)
+        factor_ht_inverse_3d(1:interface_hts,m,l) = factor_ht_inverse_1d(1:interface_hts)
 
       enddo
 
@@ -5758,9 +5758,9 @@ SUBROUTINE HL__POLAR_IONOSPHERE( &
         iht_above_3d(1:nhgt,m,l) = iht_above_1d(1:nhgt)
         iht_below_3d(1:nhgt,m,l) = iht_below_1d(1:nhgt)
         factor_ht_3d(1:nhgt,m,l) = factor_ht_1d(1:nhgt)
-        iht_above_inverse_3d(1:nhgt,m,l) = iht_above_inverse_1d(1:nhgt)
-        iht_below_inverse_3d(1:nhgt,m,l) = iht_below_inverse_1d(1:nhgt)
-        factor_ht_inverse_3d(1:nhgt,m,l) = factor_ht_inverse_1d(1:nhgt)
+        iht_above_inverse_3d(1:interface_hts,m,l) = iht_above_inverse_1d(1:interface_hts)
+        iht_below_inverse_3d(1:interface_hts,m,l) = iht_below_inverse_1d(1:interface_hts)
+        factor_ht_inverse_3d(1:interface_hts,m,l) = factor_ht_inverse_1d(1:interface_hts)
 
       enddo
 

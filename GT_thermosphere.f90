@@ -1913,7 +1913,7 @@
       istat = nf_def_var(ncid,"psao",NF_REAL,4,ids4,idv_psao2)
       istat = nf_def_var(ncid,"psmo",NF_REAL,4,ids4,idv_psmo2)
       istat = nf_def_var(ncid,"Ne_m3",NF_REAL,4,ids4,idv_Ne2)
-      istat = nf_def_var(ncid,"UT",NF_REAL,1,id_n_time,idv_UT2)
+      istat = nf_def_var(ncid,"UT",NF_REAL,1,(/id_n_time/),idv_UT2)
 !
 ! Take out of define mode:
       istat = nf_enddef(ncid)
@@ -2023,7 +2023,7 @@
       istat = nf_put_vara_real(ncid,idv_Ne2,data_start,data_count,electron_density_m3_sngl)
       if (istat /= NF_NOERR) call handle_ncerr_gt(istat,'Error writing var Electron Density',0)
 
-      istat = nf_put_vara_real(ncid,idv_UT2,it,1,Universal_Time_hours_sngl)
+      istat = nf_put_vara_real(ncid,idv_UT2,(/it/),(/1/),(/Universal_Time_hours_sngl/))
       if (istat /= NF_NOERR) call handle_ncerr_gt(istat,'Error writing var UT',0)
 
 !

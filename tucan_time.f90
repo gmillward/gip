@@ -483,7 +483,15 @@
                       N2_density_FROM_GT, &
                       qion3d)
 
-
+!  NaN check after GT
+      if (any(isnan(Temperature_K_FROM_GT))) &
+        write(6,*) 'NaN WARNING: Temperature_K_FROM_GT  nnloop=',nnloop
+      if (any(isnan(wind_southwards_ms1_FROM_GT))) &
+        write(6,*) 'NaN WARNING: wind_southwards_ms1_FROM_GT  nnloop=',nnloop
+      if (any(isnan(wind_eastwards_ms1_FROM_GT))) &
+        write(6,*) 'NaN WARNING: wind_eastwards_ms1_FROM_GT  nnloop=',nnloop
+      if (any(isnan(O_density_FROM_GT))) &
+        write(6,*) 'NaN WARNING: O_density_FROM_GT  nnloop=',nnloop
 
 !g  call GIP......
 
@@ -600,6 +608,14 @@
                                dynamo_Kdmph_dsi, &
                                dynamo_Kdmlm, &
                                ne_high_res_fixed)
+
+!  NaN check after GIP
+      if (any(isnan(Ne_density_FROM_GIP_m3))) &
+        write(6,*) 'NaN WARNING: Ne_density_FROM_GIP_m3  nnloop=',nnloop
+      if (any(isnan(Te_FROM_GIP_K))) &
+        write(6,*) 'NaN WARNING: Te_FROM_GIP_K  nnloop=',nnloop
+      if (any(isnan(Ti_Oplus_FROM_GIP_K))) &
+        write(6,*) 'NaN WARNING: Ti_Oplus_FROM_GIP_K  nnloop=',nnloop
 
       i_gip = 0
 
