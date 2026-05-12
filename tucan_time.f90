@@ -42,6 +42,7 @@
       INTEGER nn , nnloop , &
               nn_composition_counter , nn_smoothing_counter
       INTEGER number_of_GT_time_steps_in_24_hours
+      INTEGER(kind=8) :: t0_loop , t0_gt , t0_gip , t1 , clock_rate
 
       REAL*8    Ne_density_FOR_GT(15,91,20) 
       REAL*8    Oplus_density_FOR_GT(15,91,20)
@@ -363,9 +364,12 @@
 !      time loop      *
 !**********************
  
+      call system_clock(count_rate=clock_rate)
+
       DO 2000 nnloop = nnstrt , nnstop
- 
+
       WRITE(6,*) 'nnloop=  ' , nnloop
+      call system_clock(t0_loop)
 
 ! make sure nn is in range (1 to number_of_GT_time_steps_in_24_hours)
 
@@ -438,6 +442,7 @@
       if (i_no_day .eq. i_total_no_days .and. nnloop .eq. nnstop) idump_gt = 1
 
 
+      call system_clock(t0_gt)
       call GT_thermosphere( &
                       GT_input_dataset, &
                       GT_output_dataset, &
@@ -482,6 +487,10 @@
                       O2_density_FROM_GT, &
                       N2_density_FROM_GT, &
                       qion3d)
+
+      call system_clock(t1)
+      write(6,'(A,I6,A,F8.3,A)') 'TIMING GT   nnloop=',nnloop, &
+        '  wall=',real(t1-t0_gt)/real(clock_rate),' s'
 
 !  NaN check after GT
       if (any(isnan(Temperature_K_FROM_GT))) &
@@ -555,6 +564,7 @@
           idump_gip = 0
           if (i_no_day .eq. i_total_no_days .and. nnloop .eq. nnstop) idump_gip = 1
 
+          call system_clock(t0_gip)
           CALL GIP_CALCULATION (  &
                                GIP_switches, &
                                GIP_input_dataset, &
@@ -609,6 +619,10 @@
                                dynamo_Kdmlm, &
                                ne_high_res_fixed)
 
+      call system_clock(t1)
+      write(6,'(A,I6,A,F8.3,A)') 'TIMING GIP  nnloop=',nnloop, &
+        '  wall=',real(t1-t0_gip)/real(clock_rate),' s'
+
 !  NaN check after GIP
       if (any(isnan(Ne_density_FROM_GIP_m3))) &
         write(6,*) 'NaN WARNING: Ne_density_FROM_GIP_m3  nnloop=',nnloop
@@ -647,6 +661,10 @@
 
 !     CALL ELECTRODYNAMICS
   
+
+      call system_clock(t1)
+      write(6,'(A,I6,A,F8.3,A)') 'TIMING LOOP nnloop=',nnloop, &
+        '  wall=',real(t1-t0_loop)/real(clock_rate),' s'
 
  2000 CONTINUE
 

@@ -878,7 +878,7 @@ SUBROUTINE GLOBAL_IONOSPHERE_PLASMASPHERE ( &
       write(6,*) '******** reading GIP startup file ********'
 
 !     sw_reset_GIP_ion_densities_on_startup = .FALSE.
-      sw_reset_GIP_ion_densities_on_startup = .TRUE.
+      sw_reset_GIP_ion_densities_on_startup = .FALSE.
       IF(sw_reset_GIP_ion_densities_on_startup) then
 
          d13d(:,:,:,:) = 1.e9
