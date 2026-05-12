@@ -10084,10 +10084,10 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
               midpoint(lp) = (in(mp,lp) + is(mp,lp)) / 2
 
           i_write_out_tube = 0
-!         if(lp.eq.1.and.mp.eq.56) then
-!         i_write_out_tube = 1
-!         write(6,*) 'calling single_flux_tube ',mp,lp,midpoint(lp)
-!         endif
+          if(lp.eq.48.and.mp.eq.25) then
+          i_write_out_tube = 1
+          write(6,*) 'calling single_flux_tube ',mp,lp,midpoint(lp)
+          endif
           call ML__single_flux_tube_1D_calculation( &
                                                GIP_switches, &
                                                mp,lp,in(mp,lp),is(mp,lp), &
@@ -12085,12 +12085,12 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
                                 altitude_PZ_km,O_plus_production_fudge_factor)
 
 !***********************************************************************
-!          routine to evaluate H+ concentrations and fluxes 
-!                 by solving the diffusion equation 
+!          routine to evaluate H+ concentrations and fluxes
+!                 by solving the diffusion equation
 !***********************************************************************
 
   IMPLICIT NONE
-  INTEGER :: i , IN , in1 , IS , is1 , J
+  INTEGER :: i , jj , IN , in1 , IS , is1 , J
   INTEGER :: ifailed
   INTEGER :: i_write_out_tube
 
@@ -12203,29 +12203,23 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
 
   CALL ML__TRIDIAGONAL(a,b,c,d,f,fn,fs,IN,IS)
 
- !if (i_write_out_tube.eq.1) then
- !  do i = in , is
- !    write(6,5466) i, altitude_PZ_km(i),a(i),b(i),c(i),d(i),f(i)
- !  enddo
- !466 format(i5,f10.0,5e12.4)
- !endif
-
-!cg  don't let the H+ density get lower than about 10.
-!cg  - no need and it risks going negative....
- 
-! do i = in , is
-!   if (f(i).lt.1.e-6) f(i) = 1.e-6
-! enddo
-
-!cg
-!cg
-
+  if (i_write_out_tube.eq.1) then
+    write(6,*) 'H+ tridiag input (i, alt_km, a, b, c, d, ni_hplus_in):'
+    do i = in , is
+      write(6,5466) i, altitude_PZ_km(i),a(i),b(i),c(i),d(i),ni_hplus_1d(i)
+    enddo
+  endif
+ 5466 format(i5,f10.2,5e14.5)
 
   ifailed=0
   DO 600 i = in1 , is1
       IF ( f(i) <= 0.0 ) THEN
           ifailed=1
-  !       stop
+          write(6,*) 'H+ tridiag FAILED at i=',i,' alt=',altitude_PZ_km(i),' f(i)=',f(i)
+          write(6,*) 'H+ solution f(in:is):'
+          do jj = in , is
+            write(6,'(i5,f10.2,e14.5)') jj, altitude_PZ_km(jj), f(jj)
+          enddo
           RETURN
       ENDIF
   600 ENDDO
