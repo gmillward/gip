@@ -11988,11 +11988,12 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
   DO 100 i = IN , IS
   !g
   !g  Add a bit to the O+ production rate....the dreaded fudge bit....
-  !g  Only applied above 200 km to avoid unphysical O+ spikes at low
-  !g  altitudes where neutral O density is very large.
+  !g  O(i) is capped at 1e8 m-3 to prevent unphysical O+ spikes at low
+  !g  altitudes where neutral O density is very large (~1e14 m-3 at 127 km).
+  !g  Without the cap, even the smallest fudge factor generates enormous
+  !g  production rates that corrupt the tridiagonal solution.
   !g
-            if (altitude_PZ_km(i) > 200.0) &
-              peuvi(i,j)=peuvi(i,j)+O_plus_production_fudge_factor*o(i)
+            peuvi(i,j)=peuvi(i,j)+O_plus_production_fudge_factor*min(o(i),1.0d8)
 
       ww2(i) = 0.
   100 ENDDO
