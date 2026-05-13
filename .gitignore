@@ -6,6 +6,12 @@ static_files/GIP_COORDS_FILE
 static_files/GIP_apex_coords_etc.2000.0.format
 static_files/GIP_dipole_coords
 
+# Build artefacts
+*.o
+*.mod
+gt_gip_model
+data/
+
 # macOS metadata
 .DS_Store
 
