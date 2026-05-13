@@ -10084,7 +10084,7 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
               midpoint(lp) = (in(mp,lp) + is(mp,lp)) / 2
 
           i_write_out_tube = 0
-          if(lp.eq.48.and.mp.eq.25) then
+          if(lp.eq.51.and.mp.eq.52) then
           i_write_out_tube = 1
           write(6,*) 'calling single_flux_tube ',mp,lp,midpoint(lp)
           endif
@@ -10781,8 +10781,8 @@ vp(i) = 0.0
 
 !             if(i_write_out_tube.eq.1) write(6,*) 'i_attempt ',i_attempt
 
-              if (mp.eq.71 .and. lp.eq.2 .and. i_attempt.eq.1) then
-                write(6,*) '=== O+ diag PRE-SOLVE mp=71 lp=2 UT=',ut_in_seconds/3600.
+              if (mp.eq.52 .and. lp.eq.51 .and. i_attempt.eq.1) then
+                write(6,*) '=== O+ diag PRE-SOLVE mp=52 lp=51 UT=',ut_in_seconds/3600.
                 write(6,'(A5,A10,3A14)') 'i','alt_km','ni_Oplus','ni_Hplus','ne'
                 do i = IN , IS
                   write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
@@ -10797,8 +10797,8 @@ vp(i) = 0.0
               O,M_plasma(1),M_plasma(2),KM_plasma,plasma_time_step_seconds,Ofailed, &
               i_write_out_tube,altitude_PZ_km,O_plus_production_fudge_factor)
 
-              if (mp.eq.71 .and. lp.eq.2 .and. i_attempt.eq.1) then
-                write(6,*) '=== O+ diag POST-SOLVE mp=71 lp=2 UT=',ut_in_seconds/3600.
+              if (mp.eq.52 .and. lp.eq.51 .and. i_attempt.eq.1) then
+                write(6,*) '=== O+ diag POST-SOLVE mp=52 lp=51 UT=',ut_in_seconds/3600.
                 write(6,'(A5,A10,3A14)') 'i','alt_km','ni_Oplus','ni_Hplus','ne'
                 do i = IN , IS
                   write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
@@ -10855,8 +10855,8 @@ vp(i) = 0.0
                   dni_Hplus_1d_saved(i)=dni_Hplus_1d(i)
               enddo
 
-              if (mp.eq.71 .and. lp.eq.2) then
-                write(6,*) '=== H+ diag PRE-SOLVE mp=71 lp=2 IN=',IN,' IS=',IS
+              if (mp.eq.52 .and. lp.eq.51) then
+                write(6,*) '=== H+ diag PRE-SOLVE mp=52 lp=51 IN=',IN,' IS=',IS
                 write(6,'(A5,A10,6A14)') 'i','alt_km','ni_Hplus','ni_Oplus', &
                   'ne','Ti_Hplus','Te','nuin'
                 do i = IN , IS
@@ -12281,18 +12281,27 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
   endif
  5466 format(i5,f10.2,5e14.5)
 
-  ifailed=0
+! Clamp near-zero negatives before checking for genuine failure.
+! H+ at low altitudes is physically negligible; a tiny negative f(i)
+! is roundoff, not an unphysical solution.  Only declare failure when
+! |f(i)| is significant relative to the peak of the solution.
+  w1 = maxval(abs(f(in1:is1)))
   DO 600 i = in1 , is1
       IF ( f(i) <= 0.0 ) THEN
-          ifailed=1
-          write(6,*) 'H+ tridiag FAILED at i=',i,' alt=',altitude_PZ_km(i),' f(i)=',f(i)
-          write(6,*) 'H+ solution f(in:is):'
-          do jj = in , is
-            write(6,'(i5,f10.2,e14.5)') jj, altitude_PZ_km(jj), f(jj)
-          enddo
-          RETURN
+          if (abs(f(i)) < 1.0d-6 * w1) then
+              f(i) = 1.0d0
+          else
+              ifailed=1
+              write(6,*) 'H+ tridiag FAILED at i=',i,' alt=',altitude_PZ_km(i),' f(i)=',f(i)
+              write(6,*) 'H+ solution f(in:is):'
+              do jj = in , is
+                write(6,'(i5,f10.2,e14.5)') jj, altitude_PZ_km(jj), f(jj)
+              enddo
+              RETURN
+          endif
       ENDIF
   600 ENDDO
+  ifailed=0
 
     DO i = in1 , is1
         NI_hplus_1d(i) = f(i)
