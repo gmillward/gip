@@ -10084,7 +10084,7 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
               midpoint(lp) = (in(mp,lp) + is(mp,lp)) / 2
 
           i_write_out_tube = 0
-          if(lp.eq.51.and.mp.eq.52) then
+          if(lp.eq.10.and.mp.eq.46) then
           i_write_out_tube = 1
           write(6,*) 'calling single_flux_tube ',mp,lp,midpoint(lp)
           endif
@@ -10781,12 +10781,12 @@ vp(i) = 0.0
 
 !             if(i_write_out_tube.eq.1) write(6,*) 'i_attempt ',i_attempt
 
-              if (mp.eq.52 .and. lp.eq.51 .and. i_attempt.eq.1) then
-                write(6,*) '=== O+ diag PRE-SOLVE mp=52 lp=51 UT=',ut_in_seconds/3600.
-                write(6,'(A5,A10,3A14)') 'i','alt_km','ni_Oplus','ni_Hplus','ne'
+              if (mp.eq.46 .and. lp.eq.10 .and. i_attempt.eq.1) then
+                write(6,*) '=== O+ diag PRE-SOLVE mp=46 lp=10 UT=',ut_in_seconds/3600.
+                write(6,'(A5,A10,6A14)') 'i','alt_km','ni_Oplus','peuvi_1','chemp_1','beta_1','O','nuin'
                 do i = IN , IS
-                  write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
-                    ni_oplus_1d(i),ni_hplus_1d(i),ne_1d(i)
+                  write(6,'(I5,F10.2,6E14.5)') i,altitude_PZ_km(i), &
+                    ni_oplus_1d(i),peuvi(i,1),chemp_1(i),beta_1(i),O(i),nuin(i)
                 enddo
               endif
 
@@ -10797,24 +10797,56 @@ vp(i) = 0.0
               O,M_plasma(1),M_plasma(2),KM_plasma,plasma_time_step_seconds,Ofailed, &
               i_write_out_tube,altitude_PZ_km,O_plus_production_fudge_factor)
 
-              if (mp.eq.52 .and. lp.eq.51 .and. i_attempt.eq.1) then
-                write(6,*) '=== O+ diag POST-SOLVE mp=52 lp=51 UT=',ut_in_seconds/3600.
+              if (mp.eq.46 .and. lp.eq.10 .and. i_attempt.eq.1) then
+                write(6,*) '=== O+ diag POST-SOLVE mp=46 lp=10 UT=',ut_in_seconds/3600.
                 write(6,'(A5,A10,3A14)') 'i','alt_km','ni_Oplus','ni_Hplus','ne'
                 do i = IN , IS
                   write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
                     ni_oplus_1d(i),ni_hplus_1d(i),ne_1d(i)
                 enddo
+                write(6,*) 'Ofailed=',Ofailed
               endif
  
               if (Ofailed == 1) then
-                  if (i_attempt == 5) write(6,*) 'Ofailed  (5th attempt) ' , mp , lp
-                  do i = in , is
-                      ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
-                      vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
-                      ne_1d(i) = ne_1d_saved(i)
-                      dni_Oplus_1d(i) = dni_Oplus_1d_saved(i)
-                      peuvi(i,:) = peuvi_saved(i,:)
-                  enddo
+
+                  if (i_attempt == 1) then
+                    ! Coarse grid may be under-resolved (dz >> O+ scale height at
+                    ! E-F transition).  Restore saved state then retry on a 5x
+                    ! finer sub-grid with log-linear density interpolation.
+                    do i = in , is
+                        ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
+                        vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
+                        ne_1d(i)       = ne_1d_saved(i)
+                        dni_Oplus_1d(i)= dni_Oplus_1d_saved(i)
+                        peuvi(i,:)     = peuvi_saved(i,:)
+                    enddo
+                    call ML__O_PLUS_SUBGRID(IN, IS, nuin, chemp_1, beta_1, peuvi, &
+                        g_parallel, dte_1d, dti_Oplus_1d, dti_Hplus_1d, upar_apex, &
+                        eta_apex_1d, dq_1d, TI_Oplus_1d, TI_Hplus_1d, TE_1d, &
+                        ni_OPlus_1d, ni_Hplus_1d, &
+                        dni_oplus_1d, dni_hplus_1d, Vi_oplus_1d, vi_hplus_1d, &
+                        NE_1d, div_vperp_1d, O, M_plasma(1), M_plasma(2), &
+                        KM_plasma, plasma_time_step_seconds, altitude_PZ_km, Ofailed)
+                    if (Ofailed == 0) goto 2317
+                    ! Sub-grid also failed; restore again before fudge retries
+                    do i = in , is
+                        ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
+                        vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
+                        ne_1d(i)       = ne_1d_saved(i)
+                        dni_Oplus_1d(i)= dni_Oplus_1d_saved(i)
+                        peuvi(i,:)     = peuvi_saved(i,:)
+                    enddo
+                  else
+                    if (i_attempt == 5) write(6,*) 'Ofailed  (5th attempt) ' , mp , lp
+                    do i = in , is
+                        ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
+                        vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
+                        ne_1d(i)       = ne_1d_saved(i)
+                        dni_Oplus_1d(i)= dni_Oplus_1d_saved(i)
+                        peuvi(i,:)     = peuvi_saved(i,:)
+                    enddo
+                  endif
+
               else
                   goto 2317
               endif
@@ -10855,7 +10887,7 @@ vp(i) = 0.0
                   dni_Hplus_1d_saved(i)=dni_Hplus_1d(i)
               enddo
 
-              if (mp.eq.52 .and. lp.eq.51) then
+              if (mp.eq.46 .and. lp.eq.10) then
                 write(6,*) '=== H+ diag PRE-SOLVE mp=52 lp=51 IN=',IN,' IS=',IS
                 write(6,'(A5,A10,6A14)') 'i','alt_km','ni_Hplus','ni_Oplus', &
                   'ne','Ti_Hplus','Te','nuin'
@@ -11925,7 +11957,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
 !***********************************************************************
 
   IMPLICIT NONE
-  INTEGER :: i , IN , in1 , IS , is1 , J
+  INTEGER :: i , jj , IN , in1 , IS , is1 , J
   INTEGER :: ifailed
   INTEGER :: i_write_out_tube
 
@@ -12047,7 +12079,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
 ! not the rows are scaled.  (Column scaling would require unscaling.)
   DO i = in1 , is1
       w1 = max(abs(a(i)),abs(b(i)),abs(c(i)),abs(d(i)))
-      if (w1 > 0.0d0) then
+      if (w1 > 0.0_8) then
           a(i) = a(i)/w1 ; b(i) = b(i)/w1
           c(i) = c(i)/w1 ; d(i) = d(i)/w1
       endif
@@ -12078,7 +12110,13 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
   DO 600 i = in1 , is1
       IF ( f(i) <= 0.0 ) THEN
           ifailed=1
-          !stop
+          if (i_write_out_tube.eq.1) then
+              write(6,*) 'O+ tridiag FAILED at i=',i,' alt=',altitude_PZ_km(i),' f(i)=',f(i)
+              write(6,*) 'O+ solution f(in:is):'
+              do jj = in , is
+                write(6,'(i5,f10.2,e14.5)') jj, altitude_PZ_km(jj), f(jj)
+              enddo
+          endif
           RETURN
       ENDIF
   600 ENDDO
@@ -12262,7 +12300,7 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
 ! not the rows are scaled.  (Column scaling would require unscaling.)
   DO i = in1 , is1
       w1 = max(abs(a(i)),abs(b(i)),abs(c(i)),abs(d(i)))
-      if (w1 > 0.0d0) then
+      if (w1 > 0.0_8) then
           a(i) = a(i)/w1 ; b(i) = b(i)/w1
           c(i) = c(i)/w1 ; d(i) = d(i)/w1
       endif
@@ -12330,6 +12368,152 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
 end SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS
 
 
+SUBROUTINE ML__O_PLUS_SUBGRID(IN, IS, NUIn, CHEmp_1, BETa_1, PEUvi, &
+    GPAr, DTE_1d, DTI_oplus_1d, DTI_hplus_1d, UPAr, ETA, DQ, &
+    TI_oplus_1d, TI_hplus_1d, TE_1d, ni_oplus_1d, ni_hplus_1d, &
+    DNI_oplus_1d, DNI_hplus_1d, VI_oplus_1d, VI_hplus_1d, NE_1d, DVP, O, &
+    Mass_Oplus, Mass_Hplus, KM, DT, altitude_PZ_km, ifailed_sub)
+
+!***********************************************************************
+! Sub-grid refinement solver for O+.
+!
+! When the coarse-grid O+ tridiagonal fails (typically at the E-F
+! transition where the O+ scale height is 1-2 km but the grid spacing
+! is ~9 km), this routine:
+!   1. Builds a 5x finer sub-grid between IN and IS by linear
+!      interpolation of all input fields (log-linear for densities).
+!   2. Solves ML__DIFFUSION_EQUATION_O_PLUS on the sub-grid with no
+!      fudge factor.
+!   3. Maps the solution back to the original grid points.
+!
+! Row scaling (ROW not column): the solution ni_oplus_1d at original
+! grid points is unchanged in meaning — no unscaling is needed.
+!***********************************************************************
+
+  IMPLICIT NONE
+  INTEGER, INTENT(IN)    :: IN, IS
+  INTEGER, INTENT(OUT)   :: ifailed_sub
+
+  real(kind=8), INTENT(IN)    :: NUIn(NPTS), CHEmp_1(NPTS), BETa_1(NPTS)
+  real(kind=8), INTENT(INOUT) :: PEUvi(NPTS,2)
+  real(kind=8), INTENT(IN)    :: GPAr(NPTS), DTE_1d(NPTS)
+  real(kind=8), INTENT(IN)    :: DTI_oplus_1d(NPTS), DTI_hplus_1d(NPTS)
+  real(kind=8), INTENT(IN)    :: UPAr(NPTS), ETA(NPTS), DQ(NPTS)
+  real(kind=8), INTENT(IN)    :: TI_oplus_1d(NPTS), TI_hplus_1d(NPTS), TE_1d(NPTS)
+  real(kind=8), INTENT(INOUT) :: ni_oplus_1d(NPTS), ni_hplus_1d(NPTS)
+  real(kind=8), INTENT(INOUT) :: DNI_oplus_1d(NPTS), DNI_hplus_1d(NPTS)
+  real(kind=8), INTENT(INOUT) :: VI_oplus_1d(NPTS), VI_hplus_1d(NPTS)
+  real(kind=8), INTENT(INOUT) :: NE_1d(NPTS)
+  real(kind=8), INTENT(IN)    :: DVP(NPTS), O(NPTS)
+  real(kind=8), INTENT(IN)    :: Mass_Oplus, Mass_Hplus, KM(6), DT
+  real(kind=8), INTENT(IN)    :: altitude_PZ_km(NPTS)
+
+  INTEGER, PARAMETER :: n_sub = 5
+
+  ! Sub-grid arrays: indices 1:N_fine where N_fine = (IS-IN)*n_sub+1.
+  ! N_fine is always << NPTS (max tube ~500 pts x 5 = 2501 << 13813).
+  real(kind=8) :: sg_nuin(NPTS), sg_chemp_1(NPTS), sg_beta_1(NPTS)
+  real(kind=8) :: sg_peuvi(NPTS,2)
+  real(kind=8) :: sg_gpar(NPTS), sg_dte(NPTS)
+  real(kind=8) :: sg_dti_oplus(NPTS), sg_dti_hplus(NPTS)
+  real(kind=8) :: sg_upar(NPTS), sg_eta(NPTS), sg_dq(NPTS)
+  real(kind=8) :: sg_ti_oplus(NPTS), sg_ti_hplus(NPTS), sg_te(NPTS)
+  real(kind=8) :: sg_ni_oplus(NPTS), sg_ni_hplus(NPTS)
+  real(kind=8) :: sg_dni_oplus(NPTS), sg_dni_hplus(NPTS)
+  real(kind=8) :: sg_vi_oplus(NPTS), sg_vi_hplus(NPTS)
+  real(kind=8) :: sg_ne(NPTS), sg_dvp(NPTS), sg_O(NPTS), sg_alt(NPTS)
+
+  INTEGER      :: i, k, isub, N_fine
+  real(kind=8) :: frac
+
+  N_fine = (IS - IN) * n_sub + 1
+
+  ! Interpolate all inputs to sub-grid.  Linear for most fields;
+  ! log-linear for densities that span many orders of magnitude.
+  DO i = IN, IS - 1
+    DO k = 0, n_sub - 1
+      frac = real(k, 8) / real(n_sub, 8)
+      isub = (i - IN) * n_sub + k + 1
+
+      sg_nuin(isub)      = NUIn(i)          + frac*(NUIn(i+1)          - NUIn(i))
+      sg_chemp_1(isub)   = CHEmp_1(i)       + frac*(CHEmp_1(i+1)       - CHEmp_1(i))
+      sg_beta_1(isub)    = BETa_1(i)        + frac*(BETa_1(i+1)        - BETa_1(i))
+      sg_peuvi(isub,1)   = PEUvi(i,1)       + frac*(PEUvi(i+1,1)       - PEUvi(i,1))
+      sg_peuvi(isub,2)   = PEUvi(i,2)       + frac*(PEUvi(i+1,2)       - PEUvi(i,2))
+      sg_gpar(isub)      = GPAr(i)          + frac*(GPAr(i+1)          - GPAr(i))
+      sg_dte(isub)       = DTE_1d(i)        + frac*(DTE_1d(i+1)        - DTE_1d(i))
+      sg_dti_oplus(isub) = DTI_oplus_1d(i)  + frac*(DTI_oplus_1d(i+1)  - DTI_oplus_1d(i))
+      sg_dti_hplus(isub) = DTI_hplus_1d(i)  + frac*(DTI_hplus_1d(i+1)  - DTI_hplus_1d(i))
+      sg_upar(isub)      = UPAr(i)          + frac*(UPAr(i+1)          - UPAr(i))
+      sg_eta(isub)       = ETA(i)           + frac*(ETA(i+1)           - ETA(i))
+      sg_dq(isub)        = DQ(i) / real(n_sub, 8)
+      sg_ti_oplus(isub)  = TI_oplus_1d(i)   + frac*(TI_oplus_1d(i+1)   - TI_oplus_1d(i))
+      sg_ti_hplus(isub)  = TI_hplus_1d(i)   + frac*(TI_hplus_1d(i+1)   - TI_hplus_1d(i))
+      sg_te(isub)        = TE_1d(i)         + frac*(TE_1d(i+1)         - TE_1d(i))
+      sg_dvp(isub)       = DVP(i)           + frac*(DVP(i+1)           - DVP(i))
+      sg_O(isub)         = O(i)             + frac*(O(i+1)             - O(i))
+      sg_alt(isub)       = altitude_PZ_km(i)+ frac*(altitude_PZ_km(i+1)- altitude_PZ_km(i))
+      sg_dni_hplus(isub) = DNI_hplus_1d(i)  + frac*(DNI_hplus_1d(i+1)  - DNI_hplus_1d(i))
+      sg_vi_oplus(isub)  = VI_oplus_1d(i)   + frac*(VI_oplus_1d(i+1)   - VI_oplus_1d(i))
+      sg_vi_hplus(isub)  = VI_hplus_1d(i)   + frac*(VI_hplus_1d(i+1)   - VI_hplus_1d(i))
+      sg_ni_hplus(isub)  = ni_hplus_1d(i)   + frac*(ni_hplus_1d(i+1)   - ni_hplus_1d(i))
+
+      ! Log-linear interpolation for O+ and ne: avoids negative intermediate
+      ! values and keeps the sub-grid gradient close to the true exponential
+      ! profile across the E-F transition.
+      if (ni_oplus_1d(i) > 0.0d0 .and. ni_oplus_1d(i+1) > 0.0_8) then
+        sg_ni_oplus(isub) = exp(log(ni_oplus_1d(i)) + &
+                            frac*(log(ni_oplus_1d(i+1)) - log(ni_oplus_1d(i))))
+      else
+        sg_ni_oplus(isub) = ni_oplus_1d(i) + frac*(ni_oplus_1d(i+1) - ni_oplus_1d(i))
+      endif
+      if (NE_1d(i) > 0.0d0 .and. NE_1d(i+1) > 0.0_8) then
+        sg_ne(isub) = exp(log(NE_1d(i)) + frac*(log(NE_1d(i+1)) - log(NE_1d(i))))
+      else
+        sg_ne(isub) = NE_1d(i) + frac*(NE_1d(i+1) - NE_1d(i))
+      endif
+    END DO
+  END DO
+
+  ! Last point: IS maps to sub-grid index N_fine
+  isub = N_fine
+  sg_nuin(isub)      = NUIn(IS)          ;  sg_chemp_1(isub)   = CHEmp_1(IS)
+  sg_beta_1(isub)    = BETa_1(IS)        ;  sg_peuvi(isub,1)   = PEUvi(IS,1)
+  sg_peuvi(isub,2)   = PEUvi(IS,2)       ;  sg_gpar(isub)      = GPAr(IS)
+  sg_dte(isub)       = DTE_1d(IS)        ;  sg_dti_oplus(isub) = DTI_oplus_1d(IS)
+  sg_dti_hplus(isub) = DTI_hplus_1d(IS)  ;  sg_upar(isub)      = UPAr(IS)
+  sg_eta(isub)       = ETA(IS)           ;  sg_ti_oplus(isub)  = TI_oplus_1d(IS)
+  sg_ti_hplus(isub)  = TI_hplus_1d(IS)   ;  sg_te(isub)        = TE_1d(IS)
+  sg_dvp(isub)       = DVP(IS)           ;  sg_O(isub)         = O(IS)
+  sg_alt(isub)       = altitude_PZ_km(IS);  sg_ni_oplus(isub)  = ni_oplus_1d(IS)
+  sg_ni_hplus(isub)  = ni_hplus_1d(IS)   ;  sg_dni_hplus(isub) = DNI_hplus_1d(IS)
+  sg_vi_oplus(isub)  = VI_oplus_1d(IS)   ;  sg_vi_hplus(isub)  = VI_hplus_1d(IS)
+  sg_ne(isub)        = NE_1d(IS)
+
+  ! Solve O+ diffusion on sub-grid (IN_sub=1, IS_sub=N_fine, no fudge, no diagnostics)
+  CALL ML__DIFFUSION_EQUATION_O_PLUS(1, 1, N_fine, &
+      sg_nuin, sg_chemp_1, sg_beta_1, sg_peuvi, &
+      sg_gpar, sg_dte, sg_dti_oplus, sg_dti_hplus, sg_upar, sg_eta, sg_dq, &
+      sg_ti_oplus, sg_ti_hplus, sg_te, sg_ni_oplus, sg_ni_hplus, &
+      sg_dni_oplus, sg_dni_hplus, sg_vi_oplus, sg_vi_hplus, sg_ne, sg_dvp, sg_O, &
+      Mass_Oplus, Mass_Hplus, KM, DT, ifailed_sub, 0, sg_alt, 0.0_8)
+
+  if (ifailed_sub == 0) then
+    ! Map solution at original grid points back from sub-grid.
+    ! Update ne using the change in O+; recompute the O+ gradient
+    ! on the original grid for consistency with ML__DF_BY_DS.
+    DO i = IN, IS
+      isub = (i - IN) * n_sub + 1
+      NE_1d(i)       = NE_1d(i) - ni_oplus_1d(i) + sg_ni_oplus(isub)
+      ni_oplus_1d(i) = sg_ni_oplus(isub)
+      VI_oplus_1d(i) = sg_vi_oplus(isub)
+    END DO
+    CALL ML__DF_BY_DS(ni_oplus_1d, DNI_oplus_1d, IN, IS, ETA, DQ)
+  endif
+
+  RETURN
+
+END SUBROUTINE ML__O_PLUS_SUBGRID
 
 
 
