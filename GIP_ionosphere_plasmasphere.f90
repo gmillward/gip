@@ -12038,9 +12038,20 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
       c(i) = w1*(yp(i)+xi(i+1)/ETA(i+1))
   ENDDO
 
+! Row equilibration: divide each row by its max-magnitude entry so
+! all matrix entries lie in [-1,1].  Improves conditioning when
+! coefficients span many orders of magnitude across altitude levels.
+  DO i = in1 , is1
+      w1 = max(abs(a(i)),abs(b(i)),abs(c(i)),abs(d(i)))
+      if (w1 > 0.0d0) then
+          a(i) = a(i)/w1 ; b(i) = b(i)/w1
+          c(i) = c(i)/w1 ; d(i) = d(i)/w1
+      endif
+  ENDDO
+
     fn = NI_oplus_1d(IN)
     fs = NI_oplus_1d(IS)
- 
+
   CALL ML__TRIDIAGONAL(a,b,c,d,f,fn,fs,IN,IS)
 
   if (i_write_out_tube.eq.1) then
@@ -12238,9 +12249,19 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
       c(i) = w1*(yp(i)+xi(i+1)/ETA(i+1))
   ENDDO
 
+! Row equilibration: divide each row by its max-magnitude entry so
+! all matrix entries lie in [-1,1].  Improves conditioning when
+! coefficients span many orders of magnitude across altitude levels.
+  DO i = in1 , is1
+      w1 = max(abs(a(i)),abs(b(i)),abs(c(i)),abs(d(i)))
+      if (w1 > 0.0d0) then
+          a(i) = a(i)/w1 ; b(i) = b(i)/w1
+          c(i) = c(i)/w1 ; d(i) = d(i)/w1
+      endif
+  ENDDO
+
     fn = NI_hplus_1d(IN)
     fs = NI_hplus_1d(IS)
-
 
   CALL ML__TRIDIAGONAL(a,b,c,d,f,fn,fs,IN,IS)
 
