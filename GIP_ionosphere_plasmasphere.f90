@@ -10522,6 +10522,7 @@ SUBROUTINE ML__single_flux_tube_1D_calculation( &
            REAL(kind=8) :: Kdmlm(2)
            REAL(kind=8) :: peuvn(NPTS,6)
            REAL(kind=8) :: peuvi(NPTS,6)
+           REAL(kind=8) :: peuvi_saved(NPTS,6)
            REAL(kind=8) :: Apex_D1_1d(3,NPTS)
            REAL(kind=8) :: Apex_D2_1d(3,NPTS)
            REAL(kind=8) :: Apex_BE3_1d(NPTS)
@@ -10765,6 +10766,7 @@ vp(i) = 0.0
                   vi_Oplus_1d_saved(i)=vi_Oplus_1d(i)
                   ne_1d_saved(i)=ne_1d(i)
                   dni_Oplus_1d_saved(i)=dni_Oplus_1d(i)
+                  peuvi_saved(i,:)=peuvi(i,:)
               enddo
 
 
@@ -10779,12 +10781,30 @@ vp(i) = 0.0
 
 !             if(i_write_out_tube.eq.1) write(6,*) 'i_attempt ',i_attempt
 
+              if (mp.eq.71 .and. lp.eq.2 .and. i_attempt.eq.1) then
+                write(6,*) '=== O+ diag PRE-SOLVE mp=71 lp=2 UT=',ut_in_seconds/3600.
+                write(6,'(A5,A10,3A14)') 'i','alt_km','ni_Oplus','ni_Hplus','ne'
+                do i = IN , IS
+                  write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
+                    ni_oplus_1d(i),ni_hplus_1d(i),ne_1d(i)
+                enddo
+              endif
+
               CALL ML__DIFFUSION_EQUATION_O_PLUS(1,IN,IS,nuin,chemp_1, &
               beta_1,peuvi,g_parallel,dte_1d,dti_Oplus_1d,dti_Hplus_1d,upar_apex, &
               eta_apex_1d,dq_1d,TI_Oplus_1d,TI_Hplus_1d,TE_1d,ni_OPlus_1d,ni_Hplus_1d, &
               dni_oplus_1d,dni_hplus_1d,Vi_oplus_1d,vi_hplus_1d,NE_1d,div_vperp_1d, &
               O,M_plasma(1),M_plasma(2),KM_plasma,plasma_time_step_seconds,Ofailed, &
               i_write_out_tube,altitude_PZ_km,O_plus_production_fudge_factor)
+
+              if (mp.eq.71 .and. lp.eq.2 .and. i_attempt.eq.1) then
+                write(6,*) '=== O+ diag POST-SOLVE mp=71 lp=2 UT=',ut_in_seconds/3600.
+                write(6,'(A5,A10,3A14)') 'i','alt_km','ni_Oplus','ni_Hplus','ne'
+                do i = IN , IS
+                  write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
+                    ni_oplus_1d(i),ni_hplus_1d(i),ne_1d(i)
+                enddo
+              endif
  
               if (Ofailed == 1) then
                   if (i_attempt == 5) write(6,*) 'Ofailed  (5th attempt) ' , mp , lp
@@ -10793,6 +10813,7 @@ vp(i) = 0.0
                       vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
                       ne_1d(i) = ne_1d_saved(i)
                       dni_Oplus_1d(i) = dni_Oplus_1d_saved(i)
+                      peuvi(i,:) = peuvi_saved(i,:)
                   enddo
               else
                   goto 2317
@@ -10833,6 +10854,22 @@ vp(i) = 0.0
                   ne_1d_saved(i)=ne_1d(i)
                   dni_Hplus_1d_saved(i)=dni_Hplus_1d(i)
               enddo
+
+              if (mp.eq.71 .and. lp.eq.2) then
+                write(6,*) '=== H+ diag PRE-SOLVE mp=71 lp=2 IN=',IN,' IS=',IS
+                write(6,'(A5,A10,6A14)') 'i','alt_km','ni_Hplus','ni_Oplus', &
+                  'ne','Ti_Hplus','Te','nuin'
+                do i = IN , IS
+                  write(6,'(I5,F10.2,6E14.5)') i,altitude_PZ_km(i), &
+                    ni_hplus_1d(i),ni_oplus_1d(i),ne_1d(i), &
+                    ti_hplus_1d(i),te_1d(i),nuin(i)
+                enddo
+                write(6,'(A5,A10,3A14)') 'i','alt_km','chemp_2','beta_2','peuvi_2'
+                do i = IN , IS
+                  write(6,'(I5,F10.2,3E14.5)') i,altitude_PZ_km(i), &
+                    chemp_2(i),beta_2(i),peuvi(i,2)
+                enddo
+              endif
 
               CALL ML__DIFFUSION_EQUATION_H_PLUS(2,IN,IS,nuin,chemp_1,chemp_2, &
               beta_1,beta_2,peuvi,g_parallel,dte_1d,dti_Oplus_1d,dti_Hplus_1d,upar_apex, &
@@ -11951,8 +11988,11 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
   DO 100 i = IN , IS
   !g
   !g  Add a bit to the O+ production rate....the dreaded fudge bit....
+  !g  Only applied above 200 km to avoid unphysical O+ spikes at low
+  !g  altitudes where neutral O density is very large.
   !g
-            peuvi(i,j)=peuvi(i,j)+O_plus_production_fudge_factor*o(i)
+            if (altitude_PZ_km(i) > 200.0) &
+              peuvi(i,j)=peuvi(i,j)+O_plus_production_fudge_factor*o(i)
 
       ww2(i) = 0.
   100 ENDDO
