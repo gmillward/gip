@@ -12041,6 +12041,10 @@ SUBROUTINE ML__DIFFUSION_EQUATION_O_PLUS(J,IN,IS,NUIn,CHEmp_1,BETa_1,PEUvi, &
 ! Row equilibration: divide each row by its max-magnitude entry so
 ! all matrix entries lie in [-1,1].  Improves conditioning when
 ! coefficients span many orders of magnitude across altitude levels.
+! This is ROW (not column) scaling: we multiply each equation by 1/s_i,
+! which leaves the unknowns f(i) unchanged.  No unscaling of the
+! solution is needed — ML__TRIDIAGONAL returns the same f whether or
+! not the rows are scaled.  (Column scaling would require unscaling.)
   DO i = in1 , is1
       w1 = max(abs(a(i)),abs(b(i)),abs(c(i)),abs(d(i)))
       if (w1 > 0.0d0) then
@@ -12252,6 +12256,10 @@ SUBROUTINE ML__DIFFUSION_EQUATION_H_PLUS(J,IN,IS,NUIn,CHEmp_1,Chemp_2,BETa_1,bet
 ! Row equilibration: divide each row by its max-magnitude entry so
 ! all matrix entries lie in [-1,1].  Improves conditioning when
 ! coefficients span many orders of magnitude across altitude levels.
+! This is ROW (not column) scaling: we multiply each equation by 1/s_i,
+! which leaves the unknowns f(i) unchanged.  No unscaling of the
+! solution is needed — ML__TRIDIAGONAL returns the same f whether or
+! not the rows are scaled.  (Column scaling would require unscaling.)
   DO i = in1 , is1
       w1 = max(abs(a(i)),abs(b(i)),abs(c(i)),abs(d(i)))
       if (w1 > 0.0d0) then
