@@ -528,8 +528,8 @@ SUBROUTINE GIP_CALCULATION ( &
     UT_hours_part_integer = int(universal_time_seconds/3600.)
     UT_mins_part_integer = nint((((universal_time_seconds/3600.) - real(UT_hours_part_integer)) * 60.))
 
-    write(hours_string,fmt='(i12.2)') UT_hours_part_integer
-    write(mins_string,fmt='(i12.2)') UT_mins_part_integer
+    write(hours_string,fmt='(i2.2)') UT_hours_part_integer
+    write(mins_string,fmt='(i2.2)') UT_mins_part_integer
 
     write(6,*) '********* GIP CALLED AT ' // hours_string // ':' // mins_string // ' UT *********'
 

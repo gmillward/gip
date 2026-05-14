@@ -1,7 +1,7 @@
 # Compiler and Flags
 FC      = gfortran
 #FFLAGS  = -O3 -Wall -fdefault-real-8 -fmax-stack-var-size=131072 -Wno-unused-variable
-FFLAGS  = -O3 -Wall -fdefault-real-8 -frecursive -Wno-unused-variable -Wno-maybe-uninitialized -Wunused-label -Wunused-function -Wunused-label -fmax-errors=1 -Werror=unused-dummy-argument
+FFLAGS  = -O1 -Wall -fdefault-real-8 -Wno-unused-variable -Wno-maybe-uninitialized -Wunused-label -Wunused-function -Wunused-label -fmax-errors=1 -Werror=unused-dummy-argument
 
 # NetCDF Paths (Adjust if using MacPorts or Intel)
 NC_DIR  = /opt/homebrew
