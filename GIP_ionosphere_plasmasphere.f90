@@ -10837,7 +10837,14 @@ vp(i) = 0.0
                         peuvi(i,:)     = peuvi_saved(i,:)
                     enddo
                   else
-                    if (i_attempt == 5) write(6,*) 'Ofailed  (5th attempt) ' , mp , lp
+                    if (i_attempt == 5) then
+                        write(6,'(A,I4,A,I4,4(A,F7.2))') &
+                            'Ofailed  (5th attempt) mp=',mp,' lp=',lp, &
+                            '  UT_hr=',ut_in_seconds/3600., &
+                            '  LT_hr=',mod(ut_in_seconds/3600. + glon_1d(in)/(DTR*15.) + 24., 24.), &
+                            '  glon_deg=',glon_1d(in)/DTR, &
+                            '  alt_low_km=',altitude_PZ_km(in)
+                    endif
                     do i = in , is
                         ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
                         vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)

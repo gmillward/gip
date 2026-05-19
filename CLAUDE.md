@@ -81,3 +81,26 @@ Each timestep the code checks key GT output fields (`Temperature_K_FROM_GT`, win
 ```
 NaN WARNING: <variable_name>  nnloop= <timestep>
 ```
+
+## GIP grid coordinate system
+
+- **mp** (1–80): magnetic longitude index
+- **lp** (1–67): magnetic latitude index — **lp=1 is high latitude (polar), higher lp moves toward the equator**
+- **interface_hts** (31 levels): fixed height grid from 90 km to 9000 km:
+  `90, 95, 100, 105, 110, 115, 120, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400, 450, 500, 550, 600, 700, 800, 900, 1000, 2000, 4000, 6370, 9000 km`
+- The E-F region transition is around indices 7–9 (120–150 km); the coarse spacing here (25 km jumps) is a known limitation.
+- This grid was designed 30+ years ago under tight memory/compute constraints. A much finer, modern grid is a planned future development.
+
+## O+ solver instabilities (Ofailed)
+
+The O+ tridiagonal solver (`ML__DIFFUSION_EQUATION_O_PLUS`) occasionally fails to converge even after the 5x sub-grid refinement fallback. Diagnostic output added to the `Ofailed (5th attempt)` branch prints UT, local time, geographic longitude, and footpoint altitude.
+
+From a full 1-day run (nnstop=1440, 60s timestep, F10.7=120, day 80):
+
+- **Altitude:** Every failure occurs at `alt_low_km = 90.0` — the bottom of the grid. This is the E-region base where steep density gradients develop.
+- **Local time:** Failures cluster tightly at **~06 LT (dawn terminator)**, with a secondary cluster at **~19–20 LT (dusk)**. The instability is triggered as a flux tube crosses from night into sunlight (or vice versa), when photoproduction switches on abruptly and creates density gradients the coarse 90 km grid cannot resolve.
+- **Latitude:** Failures concentrate at **high magnetic latitudes** (lp=1–16) and a specific mid-latitude band (lp≈46–50). At high latitudes the terminator crosses field lines more obliquely, making the E-region gradient sharper.
+- **Longitude:** The failing mp index sweeps through all values over the UT day, tracking the dawn terminator as it rotates westward — consistent with the LT diagnosis.
+- **Hfailed:** Zero H+ solver failures in the same run; instability is purely in the O+ solver.
+
+The root cause is the 90 km coarse grid spacing at the E-F boundary combined with the abrupt onset of photoionisation at the terminator. The long-term fix is a redesigned grid with finer resolution in the E region.
