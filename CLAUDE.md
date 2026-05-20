@@ -103,4 +103,34 @@ From a full 1-day run (nnstop=1440, 60s timestep, F10.7=120, day 80):
 - **Longitude:** The failing mp index sweeps through all values over the UT day, tracking the dawn terminator as it rotates westward — consistent with the LT diagnosis.
 - **Hfailed:** Zero H+ solver failures in the same run; instability is purely in the O+ solver.
 
-The root cause is the 90 km coarse grid spacing at the E-F boundary combined with the abrupt onset of photoionisation at the terminator. The long-term fix is a redesigned grid with finer resolution in the E region.
+The root cause is the coarse grid spacing in the E-F transition region combined with the abrupt onset of photoionisation at the terminator. The long-term fix is a redesigned grid with finer resolution in the E region.
+
+### Sub-grid refinement chain (branch: dawn-dusk-spatial-res)
+
+`ML__O_PLUS_SUBGRID` was refactored to accept `n_sub` as a passed argument (previously hardcoded to 5). The fallback sequence on a coarse-grid failure is now:
+
+1. **5x sub-grid** — handles most cases
+2. **10x sub-grid** — triggered if 5x fails; solves ~83% of the original 223 failures
+3. **20x sub-grid** — triggered if 10x fails; solves a further ~12%, leaving 11 survivors
+4. **Fudge-factor retries** (attempts 2–5) — last resort for the 11 remaining cases
+
+All 11 survivors are in the **lp≈46–50 band at ~06 LT**. These are near-equatorial E-region flux tubes (footpoints at ±3–7° geographic latitude, apex at ~143 km) where the O+ density collapses to near-zero at both footpoints during the night, then must jump many orders of magnitude into the F region over just a handful of grid points as the tube crosses the dawn terminator.
+
+### Temporal resolution experiment
+
+Reducing GIP calling frequency from 15 min to 5 min **increased** failures (223 → 728), with the dusk-side count exploding. This confirms the problem is primarily **spatial** (grid resolution along the tube in the E-F region), not temporal.
+
+### Flux tube profile analysis (mp=7, lp=49)
+
+This is a representative hard-to-solve tube. Key findings:
+- IN=12445, IS=12537 — 93 grid points, apex at ~143 km altitude
+- Geographic footpoints at ~+3° and ~-6.5° latitude (near-equatorial, spanning the magnetic equator)
+- At local times away from the terminator the O+ profile is a smooth arch (classic dayside)
+- As LT approaches ~06, the profile collapses: footpoint densities drop to near-zero while the apex retains significant density, creating an extreme gradient (~10⁸ m⁻³ difference) bridged by only a few coarse grid points in the E-F transition
+- The collapse is rapid — it occurs over just 2–3 GIP calls (30–45 simulated minutes), consistent with both spatial and temporal resolution being marginal at the terminator
+
+Plots: `profile_mp7_lp49.png` (single snapshot), `profile_evolution_mp7_lp49.png` (full-day evolution coloured by LT).
+
+### Next steps to investigate
+- Solving in **log-density space** rather than linear space for the tridiagonal — physically appropriate given the many-orders-of-magnitude variation, and would make the problem better conditioned near the terminator
+- Longer term: redesign the flux-tube grid with finer spacing in the E-F transition region (~120–200 km)
