@@ -10034,7 +10034,19 @@ SUBROUTINE ML__MID_AND_LOW_LATITUDE_IONOSPHERE( &
 
               enddo
 
-
+              ! Profile diagnostic for tube mp=7, lp=49
+              if (mp == 7 .and. lp == 49) then
+                  write(6,'(A,I4,A,I4,A,F6.2,A,F6.2,A,I6,A,I6)') &
+                      'PROFILE mp=',mp,' lp=',lp, &
+                      '  UT_hr=',UT_in_seconds/3600., &
+                      '  LT_hr=',mod(UT_in_seconds/3600.+glon_1d(in(mp,lp))/(DTR*15.)+24.,24.), &
+                      '  IN=',in(mp,lp),'  IS=',is(mp,lp)
+                  write(6,'(A8,A12,A12,A14,A14)') 'i','alt_km','glat_deg','Oplus_m3','Ne_m3'
+                  do i = in(mp,lp), is(mp,lp)
+                      write(6,'(I8,2F12.2,2E14.4)') i, altitude_PZ_km(i), &
+                          90.0d0 - gcol_1d(i)/DTR, ni_oplus_1d(i), ne_1d(i)
+                  enddo
+              endif
 
 
 
@@ -10826,9 +10838,41 @@ vp(i) = 0.0
                         ni_OPlus_1d, ni_Hplus_1d, &
                         dni_oplus_1d, dni_hplus_1d, Vi_oplus_1d, vi_hplus_1d, &
                         NE_1d, div_vperp_1d, O, M_plasma(1), M_plasma(2), &
-                        KM_plasma, plasma_time_step_seconds, altitude_PZ_km, Ofailed)
+                        KM_plasma, plasma_time_step_seconds, altitude_PZ_km, Ofailed, 5)
                     if (Ofailed == 0) goto 2317
-                    ! Sub-grid also failed; restore again before fudge retries
+                    ! 5x sub-grid failed; try 10x before falling back to fudge retries
+                    do i = in , is
+                        ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
+                        vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
+                        ne_1d(i)       = ne_1d_saved(i)
+                        dni_Oplus_1d(i)= dni_Oplus_1d_saved(i)
+                        peuvi(i,:)     = peuvi_saved(i,:)
+                    enddo
+                    call ML__O_PLUS_SUBGRID(IN, IS, nuin, chemp_1, beta_1, peuvi, &
+                        g_parallel, dte_1d, dti_Oplus_1d, dti_Hplus_1d, upar_apex, &
+                        eta_apex_1d, dq_1d, TI_Oplus_1d, TI_Hplus_1d, TE_1d, &
+                        ni_OPlus_1d, ni_Hplus_1d, &
+                        dni_oplus_1d, dni_hplus_1d, Vi_oplus_1d, vi_hplus_1d, &
+                        NE_1d, div_vperp_1d, O, M_plasma(1), M_plasma(2), &
+                        KM_plasma, plasma_time_step_seconds, altitude_PZ_km, Ofailed, 10)
+                    if (Ofailed == 0) goto 2317
+                    ! 10x also failed; try 20x before falling back to fudge-factor retries
+                    do i = in , is
+                        ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
+                        vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
+                        ne_1d(i)       = ne_1d_saved(i)
+                        dni_Oplus_1d(i)= dni_Oplus_1d_saved(i)
+                        peuvi(i,:)     = peuvi_saved(i,:)
+                    enddo
+                    call ML__O_PLUS_SUBGRID(IN, IS, nuin, chemp_1, beta_1, peuvi, &
+                        g_parallel, dte_1d, dti_Oplus_1d, dti_Hplus_1d, upar_apex, &
+                        eta_apex_1d, dq_1d, TI_Oplus_1d, TI_Hplus_1d, TE_1d, &
+                        ni_OPlus_1d, ni_Hplus_1d, &
+                        dni_oplus_1d, dni_hplus_1d, Vi_oplus_1d, vi_hplus_1d, &
+                        NE_1d, div_vperp_1d, O, M_plasma(1), M_plasma(2), &
+                        KM_plasma, plasma_time_step_seconds, altitude_PZ_km, Ofailed, 20)
+                    if (Ofailed == 0) goto 2317
+                    ! 20x also failed; restore and fall through to fudge-factor retries
                     do i = in , is
                         ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
                         vi_Oplus_1d(i) = vi_Oplus_1d_saved(i)
@@ -10844,6 +10888,18 @@ vp(i) = 0.0
                             '  LT_hr=',mod(ut_in_seconds/3600. + glon_1d(in)/(DTR*15.) + 24., 24.), &
                             '  glon_deg=',glon_1d(in)/DTR, &
                             '  alt_low_km=',altitude_PZ_km(in)
+                        if ((mp == 76 .and. lp == 6) .or. (mp == 7 .and. lp == 49)) then
+                            write(6,'(A,I4,A,I4,A,F6.2,A,F6.2)') &
+                                'PROFILE mp=',mp,' lp=',lp, &
+                                '  UT_hr=', ut_in_seconds/3600., &
+                                '  LT_hr=', mod(ut_in_seconds/3600. + glon_1d(in)/(DTR*15.) + 24., 24.)
+                            write(6,'(A8,A14,A14,A14,A14)') 'i','alt_km','glat_deg','Oplus_m3','Ne_m3'
+                            do i = in, is
+                                write(6,'(I8,2F14.2,2E14.4)') i, altitude_PZ_km(i), &
+                                    90.0d0 - gcol_1d(i)/DTR, &
+                                    ni_Oplus_1d_saved(i), ne_1d_saved(i)
+                            enddo
+                        endif
                     endif
                     do i = in , is
                         ni_Oplus_1d(i) = ni_Oplus_1d_saved(i)
@@ -12379,7 +12435,7 @@ SUBROUTINE ML__O_PLUS_SUBGRID(IN, IS, NUIn, CHEmp_1, BETa_1, PEUvi, &
     GPAr, DTE_1d, DTI_oplus_1d, DTI_hplus_1d, UPAr, ETA, DQ, &
     TI_oplus_1d, TI_hplus_1d, TE_1d, ni_oplus_1d, ni_hplus_1d, &
     DNI_oplus_1d, DNI_hplus_1d, VI_oplus_1d, VI_hplus_1d, NE_1d, DVP, O, &
-    Mass_Oplus, Mass_Hplus, KM, DT, altitude_PZ_km, ifailed_sub)
+    Mass_Oplus, Mass_Hplus, KM, DT, altitude_PZ_km, ifailed_sub, n_sub_in)
 
 !***********************************************************************
 ! Sub-grid refinement solver for O+.
@@ -12400,6 +12456,7 @@ SUBROUTINE ML__O_PLUS_SUBGRID(IN, IS, NUIn, CHEmp_1, BETa_1, PEUvi, &
   IMPLICIT NONE
   INTEGER, INTENT(IN)    :: IN, IS
   INTEGER, INTENT(OUT)   :: ifailed_sub
+  INTEGER, INTENT(IN)    :: n_sub_in
 
   real(kind=8), INTENT(IN)    :: NUIn(NPTS), CHEmp_1(NPTS), BETa_1(NPTS)
   real(kind=8), INTENT(INOUT) :: PEUvi(NPTS,2)
@@ -12415,7 +12472,7 @@ SUBROUTINE ML__O_PLUS_SUBGRID(IN, IS, NUIn, CHEmp_1, BETa_1, PEUvi, &
   real(kind=8), INTENT(IN)    :: Mass_Oplus, Mass_Hplus, KM(6), DT
   real(kind=8), INTENT(IN)    :: altitude_PZ_km(NPTS)
 
-  INTEGER, PARAMETER :: n_sub = 5
+  INTEGER :: n_sub
 
   ! Sub-grid arrays: indices 1:N_fine where N_fine = (IS-IN)*n_sub+1.
   ! N_fine is always << NPTS (max tube ~500 pts x 5 = 2501 << 13813).
@@ -12433,6 +12490,7 @@ SUBROUTINE ML__O_PLUS_SUBGRID(IN, IS, NUIn, CHEmp_1, BETa_1, PEUvi, &
   INTEGER      :: i, k, isub, N_fine
   real(kind=8) :: frac
 
+  n_sub  = n_sub_in
   N_fine = (IS - IN) * n_sub + 1
 
   ! Interpolate all inputs to sub-grid.  Linear for most fields;
